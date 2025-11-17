@@ -10,6 +10,7 @@ __pycache__/
 .Python
 build/
 tools/
+data/
 MNI_atlas/
 develop-eggs/
 dist/

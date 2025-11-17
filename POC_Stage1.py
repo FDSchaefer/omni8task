@@ -5,7 +5,7 @@ import sys
 sys.path.insert(0, './src')
 
 import numpy as np
-from utils import ImageData, validate_image_data, setup_logging, load_nifti, save_nifti
+from utils import ImageData, validate_image_data, setup_logging,load_dicom_series ,load_nifti, save_nifti
 from preprocessing import normalize_intensity, apply_gaussian_smoothing, preprocess_image
 from ScrollView import Scroller
 
@@ -16,8 +16,11 @@ PLT = input("Show Plots? (y/n): ").lower() == 'y'
 
 # Load sample image data
 print("\n1. Loading sample image data...")
-filepath = "./data/sample_data/nii_sample.nii"
-img_data = load_nifti(filepath)
+INPUT_FILE = "./data/sample_data/nii_sample.nii"
+img_data = load_nifti(INPUT_FILE)
+
+#INPUT_FILE = "./data/sample_data/dicom_sample"
+#img_data = load_dicom_series(INPUT_FILE)
 
 # Validate
 print("\n2. Validating image data...")
