@@ -8,7 +8,7 @@ from typing import Tuple
 
 import SimpleITK as sitk
 
-from src.utils import ImageData
+from utils import ImageData
 
 logger = logging.getLogger(__name__)
 
@@ -25,12 +25,10 @@ def load_atlas(atlas_dir: Path) -> Tuple[ImageData, ImageData]:
     """
     atlas_dir = Path(atlas_dir)
     
-    # Look for T1 template - check common naming patterns
+    # Look for T1 template
     template_candidates = [
         "mni_icbm152_t1_tal_nlin_sym_09a.nii",
-        "mni_icbm152_t1_tal_nlin_asym_09a.nii",
-        "T1.nii",
-        "template.nii",
+        "mni_icbm152_t1_tal_nlin_asym_09a.nii"
     ]
     
     template_path = None
@@ -41,12 +39,7 @@ def load_atlas(atlas_dir: Path) -> Tuple[ImageData, ImageData]:
             break
     
     if template_path is None:
-        # Fallback: find any .nii file with 't1' in name
-        nii_files = list(atlas_dir.glob("*t1*.nii*"))
-        if nii_files:
-            template_path = nii_files[0]
-        else:
-            raise FileNotFoundError(f"No T1 template found in {atlas_dir}")
+        raise FileNotFoundError(f"No T1 template found in {atlas_dir}")
     
     logger.info(f"Loading atlas template: {template_path}")
     
@@ -58,9 +51,7 @@ def load_atlas(atlas_dir: Path) -> Tuple[ImageData, ImageData]:
     # Look for brain mask
     mask_candidates = [
         "mni_icbm152_t1_tal_nlin_sym_09a_mask.nii",
-        "mni_icbm152_t1_tal_nlin_asym_09a_mask.nii",
-        "mask.nii",
-        "brain_mask.nii",
+        "mni_icbm152_t1_tal_nlin_asym_09a_mask.nii"
     ]
     
     mask_path = None
@@ -71,12 +62,7 @@ def load_atlas(atlas_dir: Path) -> Tuple[ImageData, ImageData]:
             break
     
     if mask_path is None:
-        # Fallback: find any .nii file with 'mask' in name
-        mask_files = list(atlas_dir.glob("*mask*.nii*"))
-        if mask_files:
-            mask_path = mask_files[0]
-        else:
-            raise FileNotFoundError(f"No brain mask found in {atlas_dir}")
+        raise FileNotFoundError(f"No brain mask found in {atlas_dir}")
     
     logger.info(f"Loading atlas mask: {mask_path}")
     
@@ -96,7 +82,7 @@ def numpy_to_sitk(img_data: ImageData) -> sitk.Image:
     Returns:
         SimpleITK Image
     """
-    # SimpleITK expects (x, y, z) ordering, numpy is (x, y, z) already for our data
+    # SimpleITK expects (x, y, z) ordering
     sitk_img = sitk.GetImageFromArray(img_data.data.astype(np.float32))
     
     # Set spacing and origin from affine matrix
@@ -168,8 +154,8 @@ def register_to_atlas(
     
     # Optimizer settings
     registration.SetOptimizerAsGradientDescent(
-        learningRate=1.0,
-        numberOfIterations=100,
+        learningRate=0.1,
+        numberOfIterations=1000,
         convergenceMinimumValue=1e-6,
         convergenceWindowSize=10
     )

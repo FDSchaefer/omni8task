@@ -15,7 +15,7 @@ from registration import (
     skull_strip,
     apply_transform_to_mask
 )
-from scrollview import Scroller, ScrollerMulti
+from scrollview import Scroller, ScrollerMulti, ScrollerCheckerboard, ScrollerOverlay
 
 # Setup logging
 setup_logging("INFO")
@@ -65,7 +65,6 @@ try:
     if PLT:
         ScrollerMulti(
             [template.data, atlas_mask.data],
-            2,
             ["Atlas Template", "Atlas Mask"]
         )
         input("Press Enter to continue after closing the image viewer...")
@@ -86,8 +85,8 @@ registered_img, transform = register_to_atlas(
 print(f"   Registered shape: {registered_img.shape}")
 
 if PLT:
-    ScrollerMulti(
-        [template.data, registered_img.data],
+    ScrollerCheckerboard(
+        template.data, registered_img.data,
         2,
         ["Atlas Template", "Registered Input"]
     )
@@ -101,7 +100,6 @@ print(f"   Skull-stripped shape: {skull_stripped_in_atlas.shape}")
 if PLT:
     ScrollerMulti(
         [registered_img.data, skull_stripped_in_atlas.data],
-        2,
         ["Before Mask", "After Mask"]
     )
     input("Press Enter to continue after closing the image viewer...")
@@ -129,7 +127,6 @@ print(f"   Brain coverage: {non_zero_voxels / total_voxels * 100:.1f}%")
 if PLT:
     ScrollerMulti(
         [preprocessed.data, mask_in_original_space.data, final_result.data],
-        3,
         ["Preprocessed", "Mask", "Skull-Stripped"]
     )
     input("Press Enter to continue after closing the image viewer...")
@@ -155,7 +152,6 @@ print("   ✓ Pipeline result saved")
 if PLT:
     ScrollerMulti(
         [preprocessed.data, complete_result.data],
-        2,
         ["Original", "Pipeline Result"]
     )
     input("Press Enter to continue after closing the image viewer...")

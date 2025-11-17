@@ -40,26 +40,66 @@ def Scroller(X):
     plt.show()
 
 
-def ScrollerMulti(X,num,name):
+def ScrollerMulti(X, names=None):
+    """
+    Display multiple 3D images side-by-side for comparison.
 
-    MAX = max(np.concatenate(X,axis=None))
+    Args:
+        X: List of 3D image arrays (all must have same shape)
+        names: List of names for each image (optional)
+
+    Controls:
+        Scroll: Navigate through slices
+    """
+    if not isinstance(X, list):
+        raise ValueError("X must be a list of 3D arrays")
+
+    num = len(X)
+
+    if num == 0:
+        raise ValueError("X must contain at least one image")
+
+    # Validate all images have same shape
+    first_shape = X[0].shape
+    for i, img in enumerate(X):
+        if img.shape != first_shape:
+            raise ValueError(f"All images must have same shape. Image {i} shape {img.shape} != {first_shape}")
+
+    # Set default names if not provided
+    if names is None:
+        names = [f"Image {i+1}" for i in range(num)]
+    elif len(names) != num:
+        raise ValueError(f"Number of names ({len(names)}) must match number of images ({num})")
+
+    # Calculate individual max values for each image
+    max_values = [np.max(img) for img in X]
 
     class IndexTracker(object):
-        def __init__(self, ax, X, num,name):
-            
-            self.ax = ax
+        def __init__(self, axes, X, names, max_values):
+            self.axes = axes if num > 1 else [axes]
             self.X = X
-            self.im = self.ax
-            for i in range(num):         
-                ax[i].set_title(name[i])
+            self.names = names
+            self.max_values = max_values
+            self.im = []
 
-                rows, cols, self.slices = X[i].shape
-                self.ind = self.slices//2
+            rows, cols, self.slices = X[0].shape
+            self.ind = self.slices // 2
 
-                self.im[i] = ax[i].imshow(self.X[i][:,:, self.ind], vmax=MAX, aspect = 'equal')
+            for i in range(num):
+                self.axes[i].set_title(names[i])
+                im = self.axes[i].imshow(
+                    self.X[i][:, :, self.ind],
+                    vmin=0,
+                    vmax=self.max_values[i],
+                    aspect='equal',
+                    cmap='gray'
+                )
+                self.im.append(im)
+
             self.update()
 
         def onscroll(self, event):
+            """Handle scroll events for slice navigation."""
             if event.button == 'up':
                 self.ind = (self.ind + 1) % self.slices
             else:
@@ -67,20 +107,23 @@ def ScrollerMulti(X,num,name):
             self.update()
 
         def update(self):
+            """Update the display."""
             for i in range(num):
                 self.im[i].set_data(self.X[i][:, :, self.ind])
-                self.im[i].axes.set_ylabel('slice %s' % self.ind)
+                self.axes[i].set_ylabel(f'Slice {self.ind}/{self.slices-1}')
 
-            for i in range(num):    #To allow for pause and avoid stutter
+            # Redraw all canvases (to allow for pause and avoid stutter)
+            for i in range(num):
                 self.im[i].axes.figure.canvas.draw()
 
+    # Create figure with appropriate number of subplots
+    fig, ax = plt.subplots(1, num, figsize=(5*num, 5))
 
-    fig, ax = plt.subplots(1, num)
-
-    tracker = IndexTracker(ax, X, num,name)
+    tracker = IndexTracker(ax, X, names, max_values)
 
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
 
+    plt.tight_layout()
     plt.show()
 
 
@@ -106,27 +149,32 @@ def ScrollerCheckerboard(X1, X2, name1="Image 1", name2="Image 2", checker_size=
     """
     if X1.shape != X2.shape:
         raise ValueError(f"Image shapes must match: {X1.shape} != {X2.shape}")
-    
-    MAX = max(np.max(X1), np.max(X2))
-    
+
+    # Calculate individual max values for independent normalization
+    MAX1 = np.max(X1)
+    MAX2 = np.max(X2)
+
     class IndexTracker(object):
-        def __init__(self, ax, X1, X2, name1, name2, checker_size):
+        def __init__(self, ax, X1, X2, name1, name2, checker_size, max1, max2):
             self.ax = ax
             self.X1 = X1
             self.X2 = X2
             self.name1 = name1
             self.name2 = name2
             self.checker_size = checker_size
-            
+            self.max1 = max1
+            self.max2 = max2
+
             rows, cols, self.slices = X1.shape
             self.ind = self.slices // 2
             self.mode = 'checkerboard'  # 'checkerboard', 'image1', 'image2'
-            
+
             # Create checkerboard mask
             self.update_checkerboard_mask()
-            
-            # Display
-            self.im = ax.imshow(self.get_display_slice(), vmax=MAX, aspect='equal', cmap='gray')
+
+            # Display - vmax will be updated dynamically based on mode
+            self.im = ax.imshow(self.get_display_slice(), aspect='equal', cmap='gray')
+            self.update_vmax()
             self.update_title()
             self.update()
         
@@ -147,16 +195,28 @@ def ScrollerCheckerboard(X1, X2, name1="Image 1", name2="Image 2", checker_size=
             """Get the slice to display based on current mode."""
             slice1 = self.X1[:, :, self.ind]
             slice2 = self.X2[:, :, self.ind]
-            
+
             if self.mode == 'image1':
                 return slice1
             elif self.mode == 'image2':
                 return slice2
             else:  # checkerboard
-                display = slice1.copy()
-                display[self.mask] = slice2[self.mask]
+                # Normalize each image independently before creating checkerboard
+                s1_norm = slice1 / (self.max1 + 1e-10)
+                s2_norm = slice2 / (self.max2 + 1e-10)
+                display = s1_norm.copy()
+                display[self.mask] = s2_norm[self.mask]
                 return display
-        
+
+        def update_vmax(self):
+            """Update vmax based on current display mode."""
+            if self.mode == 'image1':
+                self.im.set_clim(vmin=0, vmax=self.max1)
+            elif self.mode == 'image2':
+                self.im.set_clim(vmin=0, vmax=self.max2)
+            else:  # checkerboard - normalized to 0-1
+                self.im.set_clim(vmin=0, vmax=1)
+
         def update_title(self):
             """Update plot title with current mode and controls."""
             if self.mode == 'checkerboard':
@@ -183,14 +243,17 @@ def ScrollerCheckerboard(X1, X2, name1="Image 1", name2="Image 2", checker_size=
             if event.key == 'c' or event.key == 'b':
                 # Toggle checkerboard
                 self.mode = 'checkerboard'
+                self.update_vmax()
                 self.update()
             elif event.key == '1':
                 # Show only image 1
                 self.mode = 'image1'
+                self.update_vmax()
                 self.update()
             elif event.key == '2':
                 # Show only image 2
                 self.mode = 'image2'
+                self.update_vmax()
                 self.update()
             elif event.key == '+' or event.key == '=':
                 # Increase checker size
@@ -204,7 +267,7 @@ def ScrollerCheckerboard(X1, X2, name1="Image 1", name2="Image 2", checker_size=
                 self.update_checkerboard_mask()
                 if self.mode == 'checkerboard':
                     self.update()
-        
+
         def update(self):
             """Update the display."""
             self.im.set_data(self.get_display_slice())
@@ -214,9 +277,9 @@ def ScrollerCheckerboard(X1, X2, name1="Image 1", name2="Image 2", checker_size=
     
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(10, 8))
-    
+
     # Create tracker
-    tracker = IndexTracker(ax, X1, X2, name1, name2, checker_size)
+    tracker = IndexTracker(ax, X1, X2, name1, name2, checker_size, MAX1, MAX2)
     
     # Connect events
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
@@ -240,34 +303,40 @@ def ScrollerDifference(X1, X2, name1="Image 1", name2="Image 2"):
     """
     if X1.shape != X2.shape:
         raise ValueError(f"Image shapes must match: {X1.shape} != {X2.shape}")
-    
-    MAX = max(np.max(X1), np.max(X2))
-    
+
+    # Calculate individual max values for independent normalization
+    MAX1 = np.max(X1)
+    MAX2 = np.max(X2)
+
     class IndexTracker(object):
-        def __init__(self, axes, X1, X2, name1, name2):
+        def __init__(self, axes, X1, X2, name1, name2, max1, max2):
             self.axes = axes
             self.X1 = X1
             self.X2 = X2
-            
+            self.max1 = max1
+            self.max2 = max2
+
             rows, cols, self.slices = X1.shape
             self.ind = self.slices // 2
-            
+
             # Setup subplots
             axes[0].set_title(name1)
             axes[1].set_title(name2)
             axes[2].set_title('Difference (X1 - X2)')
-            
-            # Create images
+
+            # Create images with independent normalization
             self.im1 = axes[0].imshow(
-                self.X1[:, :, self.ind], 
-                vmax=MAX, 
-                aspect='equal', 
+                self.X1[:, :, self.ind],
+                vmin=0,
+                vmax=self.max1,
+                aspect='equal',
                 cmap='gray'
             )
             self.im2 = axes[1].imshow(
-                self.X2[:, :, self.ind], 
-                vmax=MAX, 
-                aspect='equal', 
+                self.X2[:, :, self.ind],
+                vmin=0,
+                vmax=self.max2,
+                aspect='equal',
                 cmap='gray'
             )
             
@@ -317,9 +386,9 @@ def ScrollerDifference(X1, X2, name1="Image 1", name2="Image 2"):
     
     # Create figure with 3 subplots
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    
+
     # Create tracker
-    tracker = IndexTracker(axes, X1, X2, name1, name2)
+    tracker = IndexTracker(axes, X1, X2, name1, name2, MAX1, MAX2)
     
     # Connect scroll event
     fig.canvas.mpl_connect('scroll_event', tracker.onscroll)
