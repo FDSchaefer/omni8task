@@ -8,7 +8,7 @@ from typing import Tuple
 
 import SimpleITK as sitk
 
-from src.utils import ImageData
+from utils import ImageData
 
 logger = logging.getLogger(__name__)
 

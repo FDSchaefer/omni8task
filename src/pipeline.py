@@ -11,10 +11,10 @@ from typing import Set
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileCreatedEvent
 
-from src.utils import load_nifti, save_nifti, setup_logging
-from src.preprocessing import preprocess_image
-from src.registration import atlas_based_skull_strip
-from src.quality_assessment import assess_quality, print_quality_report
+from utils import load_nifti, save_nifti, setup_logging
+from preprocessing import preprocess_image
+from registration import atlas_based_skull_strip
+from quality_assessment import assess_quality, print_quality_report
 
 logger = logging.getLogger(__name__)
 

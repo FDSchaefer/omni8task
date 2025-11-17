@@ -6,7 +6,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 from typing import Literal
 
-from src.utils import ImageData
+from utils import ImageData
 
 logger = logging.getLogger(__name__)
 
