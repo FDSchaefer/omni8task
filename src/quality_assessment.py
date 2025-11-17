@@ -175,6 +175,71 @@ def calculate_intensity_statistics(img_data: ImageData) -> Dict[str, float]:
     
     return stats
 
+def calculate_dice_coefficient(img_data: ImageData, 
+                               ground_truth: ImageData) -> Dict[str, float]:
+    """
+    Calculate Dice coefficient between predicted mask and ground truth.
+    
+    The Dice coefficient measures overlap between two binary masks:
+    Dice = 2 * |A ∩ B| / (|A| + |B|)
+    
+    Args:
+        img_data: Skull-stripped image (predicted mask)
+        ground_truth: Manual/ground truth mask
+        
+    Returns:
+        Dictionary with Dice coefficient and related metrics
+    """
+    if img_data.shape != ground_truth.shape:
+        raise ValueError(f"Image shapes must match: {img_data.shape} vs {ground_truth.shape}")
+    
+    # Create binary masks
+    pred_mask = img_data.data > 0
+    gt_mask = ground_truth.data > 0
+    
+    # Calculate intersection and union
+    intersection = np.sum(pred_mask & gt_mask)
+    pred_volume = np.sum(pred_mask)
+    gt_volume = np.sum(gt_mask)
+    
+    # Dice coefficient
+    if pred_volume + gt_volume == 0:
+        dice = 0.0
+        logger.warning("Both masks are empty!")
+    else:
+        dice = 2.0 * intersection / (pred_volume + gt_volume)
+    
+    # Jaccard index (IoU - Intersection over Union)
+    union = np.sum(pred_mask | gt_mask)
+    jaccard = intersection / union if union > 0 else 0.0
+    
+    # Sensitivity (recall, true positive rate)
+    sensitivity = intersection / gt_volume if gt_volume > 0 else 0.0
+    
+    # Specificity (true negative rate)
+    true_negatives = np.sum(~pred_mask & ~gt_mask)
+    total_negatives = np.sum(~gt_mask)
+    specificity = true_negatives / total_negatives if total_negatives > 0 else 0.0
+    
+    # Precision (positive predictive value)
+    precision = intersection / pred_volume if pred_volume > 0 else 0.0
+    
+    results = {
+        'dice': dice,
+        'jaccard': jaccard,
+        'sensitivity': sensitivity,
+        'specificity': specificity,
+        'precision': precision,
+        'intersection_voxels': int(intersection),
+        'pred_voxels': int(pred_volume),
+        'gt_voxels': int(gt_volume)
+    }
+    
+    logger.info(f"Dice Coefficient: {dice:.4f}")
+    logger.info(f"Jaccard Index (IoU): {jaccard:.4f}")
+    logger.info(f"Sensitivity: {sensitivity:.4f}, Precision: {precision:.4f}")
+    
+    return results
 
 def calculate_mutual_information(img1: ImageData, img2: ImageData, 
                                  bins: int = 256) -> float:
@@ -236,14 +301,17 @@ def calculate_mutual_information(img1: ImageData, img2: ImageData,
     return nmi
 
 
+
 def assess_quality(img_data: ImageData, 
-                   reference_img: Optional[ImageData] = None) -> Dict[str, any]:
+                   reference_img: Optional[ImageData] = None,
+                   ground_truth_mask: Optional[ImageData] = None) -> Dict[str, any]:
     """
     Comprehensive quality assessment of skull-stripped image.
     
     Args:
         img_data: Skull-stripped image to assess
         reference_img: Optional reference image for mutual information
+        ground_truth_mask: Optional manual/ground truth mask for Dice coefficient
         
     Returns:
         Dictionary with all quality metrics and pass/fail flags
@@ -284,6 +352,12 @@ def assess_quality(img_data: ImageData,
         results['mutual_information'] = mi
         results['registration_ok'] = mi > 0.3  # Good registration typically > 0.5
     
+    # 7. Dice coefficient (if ground truth provided)
+    if ground_truth_mask is not None:
+        dice_results = calculate_dice_coefficient(img_data, ground_truth_mask)
+        results['dice_metrics'] = dice_results
+        results['dice_ok'] = dice_results['dice'] > 0.85  # Good overlap typically > 0.9
+    
     # Overall pass/fail
     checks = [
         results.get('coverage_ok', False),
@@ -302,6 +376,7 @@ def assess_quality(img_data: ImageData,
     logger.info(f"  Overall: {'PASS' if results['overall_pass'] else 'FAIL'}")
     
     return results
+
 
 
 def print_quality_report(results: Dict[str, any]) -> None:
@@ -340,6 +415,19 @@ def print_quality_report(results: Dict[str, any]) -> None:
         print(f"\n6. Registration Quality (MI): {results['mutual_information']:.4f}")
         print(f"   Status: {'✓ PASS' if results['registration_ok'] else '✗ FAIL'}")
     
+    if 'dice_metrics' in results:
+        dice = results['dice_metrics']
+        check_num = 7 if 'mutual_information' in results else 6
+        print(f"\n{check_num}. Ground Truth Comparison:")
+        print(f"   Dice Coefficient: {dice['dice']:.4f}")
+        print(f"   Jaccard Index: {dice['jaccard']:.4f}")
+        print(f"   Sensitivity: {dice['sensitivity']:.4f}")
+        print(f"   Precision: {dice['precision']:.4f}")
+        print(f"   Intersection: {dice['intersection_voxels']} voxels")
+        print(f"   Predicted: {dice['pred_voxels']} | Ground Truth: {dice['gt_voxels']}")
+        print(f"   Status: {'✓ PASS' if results['dice_ok'] else '✗ FAIL'}")
+        print(f"   (Dice > 0.85 is good, > 0.9 is excellent)")
+    
     print(f"\n" + "-"*60)
     print(f"Overall: {'✓✓ PASS ✓✓' if results['overall_pass'] else '✗✗ FAIL ✗✗'}")
     print(f"Passed {results['passed_checks']}/{results['total_checks']} checks")
@@ -357,8 +445,12 @@ if __name__ == "__main__":
     img_path = "./data/sample_data/processed/skull_stripped_final.nii"
     img = load_nifti(img_path)
     
+    # Optional: Load ground truth mask for comparison
+    # ground_truth_path = "/mask.nii"
+    # ground_truth = load_nifti(ground_truth_path)
+
     # Run quality assessment
-    results = assess_quality(img)
+    results = assess_quality(img) # Add ground_truth_mask=ground_truth if available
     
     # Print report
     print_quality_report(results)
