@@ -1,0 +1,16 @@
+# Example configuration for medical imaging pipeline
+# Can be in JSON or YAML format
+
+# Preprocessing parameters
+normalize: zscore  # Options: zscore, minmax
+sigma: 1.0        # Gaussian smoothing sigma (in voxels)
+
+# Registration parameters
+registration: rigid  # Options: rigid, affine
+
+# Quality thresholds (optional - for validation)
+quality:
+  min_coverage: 5.0    # Minimum brain coverage percentage
+  max_coverage: 40.0   # Maximum brain coverage percentage
+  min_volume: 800      # Minimum brain volume (cm³)
+  max_volume: 2000     # Maximum brain volume (cm³)

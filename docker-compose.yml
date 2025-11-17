@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  mri-pipeline:
+    build: .
+    image: mri-pipeline:latest
+    container_name: mri-processor
+    volumes:
+      # Mount input data directory
+      - ./data/input:/data/input:ro
+      # Mount output directory
+      - ./data/output:/data/output
+      # Mount MNI atlas directory
+      - ./MNI_atlas:/data/atlas:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - ATLAS_DIR=/data/atlas
+    # Override default command with your processing parameters
+    command: >
+      --input /data/input/subject.nii.gz
+      --output /data/output/skull_stripped.nii.gz
+      --report /data/output/quality_report.txt
+      --normalize zscore
+      --sigma 1.0
+      --registration rigid
+      --log-level INFO
