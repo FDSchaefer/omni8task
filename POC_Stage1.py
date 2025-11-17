@@ -7,7 +7,7 @@ sys.path.insert(0, './src')
 import numpy as np
 from utils import ImageData, validate_image_data, setup_logging,load_dicom_series ,load_nifti, save_nifti
 from preprocessing import normalize_intensity, apply_gaussian_smoothing, preprocess_image
-from ScrollView import Scroller
+from scrollview import Scroller, ScrollerMulti, ScrollerCheckerboard
 from pathlib import Path
 
 # Setup logging
@@ -83,5 +83,5 @@ print("\n6. Save Processed Image...")
 save_nifti(preprocessed, OUTPUT_DIR / "nii_sample_preprocessed.nii")
 
 if PLT:
-    Scroller(preprocessed.data)
+    ScrollerCheckerboard(normalized_zscore.data,preprocessed.data)
     pause = input("Press Enter to continue after closing the image viewer...")

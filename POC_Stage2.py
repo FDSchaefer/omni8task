@@ -15,7 +15,7 @@ from registration import (
     skull_strip,
     apply_transform_to_mask
 )
-from ScrollView import Scroller, ScrollerMulti
+from scrollview import Scroller, ScrollerMulti
 
 # Setup logging
 setup_logging("INFO")
