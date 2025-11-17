@@ -8,11 +8,14 @@ import numpy as np
 from utils import ImageData, validate_image_data, setup_logging,load_dicom_series ,load_nifti, save_nifti
 from preprocessing import normalize_intensity, apply_gaussian_smoothing, preprocess_image
 from ScrollView import Scroller
+from pathlib import Path
 
 # Setup logging
 setup_logging("INFO")
 
 PLT = input("Show Plots? (y/n): ").lower() == 'y'
+OUTPUT_DIR = Path("./data/sample_data/processed")
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load sample image data
 print("\n1. Loading sample image data...")
@@ -77,7 +80,7 @@ print(f"   Mean: {np.mean(preprocessed.data):.6f}")
 print(f"   Std:  {np.std(preprocessed.data):.6f}")
 
 print("\n6. Save Processed Image...")
-save_nifti(preprocessed, "./data/sample_data/nii_sample_preprocessed.nii")
+save_nifti(preprocessed, OUTPUT_DIR / "nii_sample_preprocessed.nii")
 
 if PLT:
     Scroller(preprocessed.data)

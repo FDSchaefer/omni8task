@@ -25,7 +25,7 @@ PLT = input("Show Plots? (y/n): ").lower() == 'y'
 # Configuration
 INPUT_FILE = "./data/sample_data/nii_sample.nii"
 ATLAS_DIR = Path("./MNI_atlas")
-OUTPUT_DIR = Path("./data/sample_data")
+OUTPUT_DIR = Path("./data/sample_data/processed")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 print("\n" + "="*60)
