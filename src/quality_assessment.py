@@ -8,7 +8,7 @@ from scipy.ndimage import sobel
 from typing import Dict, Optional
 import warnings
 
-from utils import ImageData
+from src.utils import ImageData
 
 logger = logging.getLogger(__name__)
 

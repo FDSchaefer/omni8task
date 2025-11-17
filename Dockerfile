@@ -1,30 +1,32 @@
-# Medical Imaging Pipeline Docker Container
 FROM python:3.11-slim
+
+WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    git \
+    wget \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
-
-# Set working directory
-WORKDIR /app
 
 # Copy requirements
 COPY requirements.txt .
-
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy source code
 COPY src/ ./src/
-COPY process_mri.py .
 
-# Create directories for data
-RUN mkdir -p /data/input /data/output /data/atlas
+# Download MNI atlas
+RUN mkdir -p /app/MNI_atlas && \
+    wget -O /tmp/mni_atlas.zip \
+    http://www.bic.mni.mcgill.ca/~vfonov/icbm/2009/mni_icbm152_nlin_sym_09a_nifti.zip && \
+    unzip /tmp/mni_atlas.zip -d /app/MNI_atlas && \
+    rm /tmp/mni_atlas.zip
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV ATLAS_DIR=/data/atlas
+# Create directories
+RUN mkdir -p /data/input /data/output /data/config
 
-ENTRYPOINT ["python", "process_mri.py"]
-CMD ["--help"]
+# Set entrypoint
+ENTRYPOINT ["python", "-m", "src.pipeline"]
+
+# Default to watch mode
+CMD ["--watch"]
