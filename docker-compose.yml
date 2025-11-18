@@ -6,7 +6,7 @@ services:
     volumes:
       - ./data/input:/data/input
       - ./data/output:/data/output
-      - ./config.json:/data/config/config.json:ro
+      - ./docker_config.json:/data/config/config.json:ro
     environment:
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
