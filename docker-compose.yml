@@ -9,4 +9,5 @@ services:
       - ./docker_config.json:/data/config/config.json:ro
     environment:
       - PYTHONUNBUFFERED=1
+    command: '--watch'
     restart: unless-stopped

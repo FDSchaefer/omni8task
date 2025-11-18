@@ -1,16 +1,11 @@
+# POC_Stage4.sh - Demonstration of using the pipeline in a docker container
+# to allow for seamless use in a production enviorment
+
 # Build
 docker build -t skull-stripper .
 
 # Run in watch mode (default)
-docker-compose up
-
-# Or with docker directly
-docker run -d \
-  --name skull-stripper \
-  -v $(pwd)/data/input:/data/input \
-  -v $(pwd)/data/output:/data/output \
-  -v $(pwd)/config.json:/data/config/config.json:ro \
-  skull-stripper
+docker compose up
 
 # View logs
 docker logs -f skull-stripper

@@ -28,8 +28,8 @@ RUN mkdir -p /app/MNI_atlas && \
 # Create directories
 RUN mkdir -p /data/input /data/output /data/config
 
+# Copy the docker config from the main folder
+COPY docker_config.json /data/config/config.json
+
 # Set entrypoint
 ENTRYPOINT ["python", "src/pipeline.py"]
-
-# Default to watch mode with fallback config
-CMD ["--watch", "--config", "/data/config/config.json"]
