@@ -19,7 +19,7 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 # Load sample image data
 print("\n1. Loading sample image data...")
-INPUT_FILE = "./data/sample_data/nii_sample.nii"
+INPUT_FILE = "./data/sample_data/test_sample.nii"
 img_data = load_nifti(INPUT_FILE)
 
 #INPUT_FILE = "./data/sample_data/dicom_sample"

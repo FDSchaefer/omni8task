@@ -7,6 +7,8 @@ from scipy import ndimage
 from scipy.ndimage import sobel
 from typing import Dict, Optional
 import warnings
+import json
+from datetime import datetime
 
 from utils import ImageData
 
@@ -83,10 +85,10 @@ def check_connected_components(img_data: ImageData) -> Dict[str, any]:
         largest_component_fraction = 0
     
     results = {
-        'num_components': num_features,
+        'num_components': int(num_features),
         'largest_component_size': int(largest_component_size),
-        'largest_component_fraction': largest_component_fraction,
-        'component_sizes': component_sizes
+        'largest_component_fraction': float(largest_component_fraction),
+        'component_sizes': [int(size) for size in component_sizes] if len(component_sizes) > 0 else []
     }
     
     logger.info(f"Connected components: {num_features}")
@@ -174,72 +176,6 @@ def calculate_intensity_statistics(img_data: ImageData) -> Dict[str, float]:
     logger.info(f"  Median: {stats['median']:.2f}")
     
     return stats
-
-def calculate_dice_coefficient(img_data: ImageData, 
-                               ground_truth: ImageData) -> Dict[str, float]:
-    """
-    Calculate Dice coefficient between predicted mask and ground truth.
-    
-    The Dice coefficient measures overlap between two binary masks:
-    Dice = 2 * |A ∩ B| / (|A| + |B|)
-    
-    Args:
-        img_data: Skull-stripped image (predicted mask)
-        ground_truth: Manual/ground truth mask
-        
-    Returns:
-        Dictionary with Dice coefficient and related metrics
-    """
-    if img_data.shape != ground_truth.shape:
-        raise ValueError(f"Image shapes must match: {img_data.shape} vs {ground_truth.shape}")
-    
-    # Create binary masks
-    pred_mask = img_data.data > 0
-    gt_mask = ground_truth.data > 0
-    
-    # Calculate intersection and union
-    intersection = np.sum(pred_mask & gt_mask)
-    pred_volume = np.sum(pred_mask)
-    gt_volume = np.sum(gt_mask)
-    
-    # Dice coefficient
-    if pred_volume + gt_volume == 0:
-        dice = 0.0
-        logger.warning("Both masks are empty!")
-    else:
-        dice = 2.0 * intersection / (pred_volume + gt_volume)
-    
-    # Jaccard index (IoU - Intersection over Union)
-    union = np.sum(pred_mask | gt_mask)
-    jaccard = intersection / union if union > 0 else 0.0
-    
-    # Sensitivity (recall, true positive rate)
-    sensitivity = intersection / gt_volume if gt_volume > 0 else 0.0
-    
-    # Specificity (true negative rate)
-    true_negatives = np.sum(~pred_mask & ~gt_mask)
-    total_negatives = np.sum(~gt_mask)
-    specificity = true_negatives / total_negatives if total_negatives > 0 else 0.0
-    
-    # Precision (positive predictive value)
-    precision = intersection / pred_volume if pred_volume > 0 else 0.0
-    
-    results = {
-        'dice': dice,
-        'jaccard': jaccard,
-        'sensitivity': sensitivity,
-        'specificity': specificity,
-        'precision': precision,
-        'intersection_voxels': int(intersection),
-        'pred_voxels': int(pred_volume),
-        'gt_voxels': int(gt_volume)
-    }
-    
-    logger.info(f"Dice Coefficient: {dice:.4f}")
-    logger.info(f"Jaccard Index (IoU): {jaccard:.4f}")
-    logger.info(f"Sensitivity: {sensitivity:.4f}, Precision: {precision:.4f}")
-    
-    return results
 
 def calculate_mutual_information(img1: ImageData, img2: ImageData, 
                                  bins: int = 256) -> float:
@@ -352,12 +288,6 @@ def assess_quality(img_data: ImageData,
         results['mutual_information'] = mi
         results['registration_ok'] = mi > 0.3  # Good registration typically > 0.5
     
-    # 7. Dice coefficient (if ground truth provided)
-    if ground_truth_mask is not None:
-        dice_results = calculate_dice_coefficient(img_data, ground_truth_mask)
-        results['dice_metrics'] = dice_results
-        results['dice_ok'] = dice_results['dice'] > 0.85  # Good overlap typically > 0.9
-    
     # Overall pass/fail
     checks = [
         results.get('coverage_ok', False),
@@ -367,8 +297,8 @@ def assess_quality(img_data: ImageData,
         results.get('intensity_ok', False)
     ]
     
-    results['passed_checks'] = sum(checks)
-    results['total_checks'] = len(checks)
+    results['passed_checks'] = int(sum(checks))
+    results['total_checks'] = int(len(checks))
     results['overall_pass'] = results['passed_checks'] >= (len(checks) - 1)  # Allow 1 failure
     
     logger.info(f"\nQuality Assessment Summary:")
@@ -379,42 +309,167 @@ def assess_quality(img_data: ImageData,
 
 
 
-def print_quality_report(results: Dict[str, any]) -> None:
+def format_quality_report_json(results: Dict[str, any],
+                                filename: Optional[str] = None,
+                                timestamp: Optional[str] = None) -> Dict:
     """
-    Print a formatted quality assessment report.
-    
+    Format quality assessment results as a structured JSON report.
+
     Args:
         results: Dictionary from assess_quality()
+        filename: Optional filename being assessed
+        timestamp: Optional timestamp string
+
+    Returns:
+        Structured dictionary ready for JSON serialization
     """
+    # Convert numpy types to native Python types for JSON serialization
+    def convert_to_native(obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return obj
+
+    report = {
+        "metadata": {
+            "report_version": "1.0",
+            "generated_at": timestamp or datetime.now().isoformat(),
+            "filename": filename
+        },
+        "summary": {
+            "overall_status": "PASS" if results['overall_pass'] else "FAIL",
+            "checks_passed": int(results['passed_checks']),
+            "total_checks": int(results['total_checks'])
+        },
+        "metrics": {
+            "mask_coverage": {
+                "value": round(results['mask_coverage_percent'], 2),
+                "unit": "percent",
+                "status": "PASS" if results['coverage_ok'] else "FAIL",
+                "threshold": "5.0 < value < 40.0",
+                "description": "Percentage of non-zero voxels"
+            },
+            "brain_volume": {
+                "value": round(results['brain_volume_cm3'], 2),
+                "unit": "cm3",
+                "status": "PASS" if results['volume_ok'] else "FAIL",
+                "threshold": "800 < value < 2000",
+                "description": "Estimated brain volume"
+            },
+            "connected_components": {
+                "count": int(results['connected_components']['num_components']),
+                "largest_component_fraction": round(
+                    float(results['connected_components']['largest_component_fraction']), 4
+                ),
+                "largest_component_size": int(results['connected_components']['largest_component_size']),
+                "status": "PASS" if results['components_ok'] else "FAIL",
+                "threshold": "count == 1",
+                "description": "Number of disconnected brain regions"
+            },
+            "edge_density": {
+                "value": round(results['edge_density'], 4),
+                "unit": "arbitrary",
+                "status": "PASS" if results['edge_density_ok'] else "FAIL",
+                "threshold": "value < 50.0",
+                "description": "Average edge magnitude at brain boundary"
+            },
+            "intensity_statistics": {
+                "mean": round(results['intensity_stats']['mean'], 2),
+                "std": round(results['intensity_stats']['std'], 2),
+                "min": round(results['intensity_stats']['min'], 2),
+                "max": round(results['intensity_stats']['max'], 2),
+                "median": round(results['intensity_stats']['median'], 2),
+                "q25": round(results['intensity_stats']['q25'], 2),
+                "q75": round(results['intensity_stats']['q75'], 2),
+                "status": "PASS" if results['intensity_ok'] else "FAIL",
+                "threshold": "std > 0.01",
+                "description": "Brain region intensity distribution"
+            }
+        }
+    }
+
+    # Add optional metrics if present
+    if 'mutual_information' in results:
+        report['metrics']['registration_quality'] = {
+            "mutual_information": round(results['mutual_information'], 4),
+            "status": "PASS" if results['registration_ok'] else "FAIL",
+            "threshold": "value > 0.3 (good > 0.5)",
+            "description": "Image registration quality metric"
+        }
+
+    return report
+
+
+def save_quality_report_json(results: Dict[str, any],
+                              output_path: str,
+                              filename: Optional[str] = None) -> None:
+    """
+    Save quality assessment report as a JSON file.
+
+    Args:
+        results: Dictionary from assess_quality()
+        output_path: Path to save JSON file
+        filename: Optional filename being assessed
+    """
+    report = format_quality_report_json(results, filename)
+
+    with open(output_path, 'w') as f:
+        json.dump(report, f, indent=2)
+
+    logger.info(f"Quality report saved to: {output_path}")
+
+
+def print_quality_report(results: Dict[str, any],
+                        filename: Optional[str] = None,
+                        output_format: str = 'text') -> None:
+    """
+    Print a formatted quality assessment report.
+
+    Args:
+        results: Dictionary from assess_quality()
+        filename: Optional filename being assessed
+        output_format: 'text' for human-readable, 'json' for JSON format
+    """
+    if output_format == 'json':
+        report = format_quality_report_json(results, filename)
+        print(json.dumps(report, indent=2))
+        return
+
+    # Original text format
     print("\n" + "="*60)
     print("QUALITY ASSESSMENT REPORT")
+    if filename:
+        print(f"File: {filename}")
     print("="*60)
-    
+
     print(f"\n1. Mask Coverage: {results['mask_coverage_percent']:.2f}%")
     print(f"   Status: {'✓ PASS' if results['coverage_ok'] else '✗ FAIL'}")
-    
+
     print(f"\n2. Brain Volume: {results['brain_volume_cm3']:.2f} cm³")
     print(f"   Status: {'✓ PASS' if results['volume_ok'] else '✗ FAIL'}")
     print(f"   Expected: 800-2000 cm³")
-    
+
     comp = results['connected_components']
     print(f"\n3. Connected Components: {comp['num_components']}")
     print(f"   Largest component: {comp['largest_component_fraction']*100:.1f}%")
     print(f"   Status: {'✓ PASS' if results['components_ok'] else '✗ FAIL'}")
-    
+
     print(f"\n4. Edge Density: {results['edge_density']:.4f}")
     print(f"   Status: {'✓ PASS' if results['edge_density_ok'] else '✗ FAIL'}")
-    
+
     stats = results['intensity_stats']
     print(f"\n5. Intensity Statistics:")
     print(f"   Mean: {stats['mean']:.2f}, Std: {stats['std']:.2f}")
     print(f"   Range: [{stats['min']:.2f}, {stats['max']:.2f}]")
     print(f"   Status: {'✓ PASS' if results['intensity_ok'] else '✗ FAIL'}")
-    
+
     if 'mutual_information' in results:
         print(f"\n6. Registration Quality (MI): {results['mutual_information']:.4f}")
         print(f"   Status: {'✓ PASS' if results['registration_ok'] else '✗ FAIL'}")
-    
+
     if 'dice_metrics' in results:
         dice = results['dice_metrics']
         check_num = 7 if 'mutual_information' in results else 6
@@ -427,7 +482,7 @@ def print_quality_report(results: Dict[str, any]) -> None:
         print(f"   Predicted: {dice['pred_voxels']} | Ground Truth: {dice['gt_voxels']}")
         print(f"   Status: {'✓ PASS' if results['dice_ok'] else '✗ FAIL'}")
         print(f"   (Dice > 0.85 is good, > 0.9 is excellent)")
-    
+
     print(f"\n" + "-"*60)
     print(f"Overall: {'✓✓ PASS ✓✓' if results['overall_pass'] else '✗✗ FAIL ✗✗'}")
     print(f"Passed {results['passed_checks']}/{results['total_checks']} checks")
@@ -440,18 +495,28 @@ if __name__ == "__main__":
     from scrollview import Scroller
 
     setup_logging("INFO")
-    
+
     # Load a skull-stripped image
     img_path = "./data/sample_data/processed/skull_stripped_final.nii"
     img = load_nifti(img_path)
-    
+
     # Optional: Load ground truth mask for comparison
     # ground_truth_path = "/mask.nii"
     # ground_truth = load_nifti(ground_truth_path)
 
     # Run quality assessment
     results = assess_quality(img) # Add ground_truth_mask=ground_truth if available
-    
-    # Print report
-    print_quality_report(results)
+
+    # Print report in text format (default)
+    print("\n--- Text Format ---")
+    print_quality_report(results, filename=img_path)
+
+    # Print report in JSON format
+    print("\n--- JSON Format ---")
+    print_quality_report(results, filename=img_path, output_format='json')
+
+    # Save as JSON file
+    save_quality_report_json(results, "./quality_report_example.json", filename=img_path)
+    print("\nJSON report saved to: ./quality_report_example.json")
+
     Scroller(img.data)

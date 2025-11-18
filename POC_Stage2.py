@@ -28,6 +28,9 @@ ATLAS_DIR = Path("./MNI_atlas")
 OUTPUT_DIR = Path("./data/sample_data/processed")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
+normalize_method = 'minmax'
+registration_type = 'rigid'
+
 print("\n" + "="*60)
 print("STAGE 2: REGISTRATION AND SKULL STRIPPING")
 print("="*60)
@@ -45,7 +48,7 @@ if PLT:
 
 # Step 2: Preprocess
 print("\n2. Preprocessing input image...")
-preprocessed = preprocess_image(img_data, normalize_method="zscore", sigma=1.0)
+preprocessed = preprocess_image(img_data, normalize_method=normalize_method, sigma=1.0)
 print(f"   Preprocessed shape: {preprocessed.shape}")
 print(f"   Preprocessed range: [{np.min(preprocessed.data):.2f}, {np.max(preprocessed.data):.2f}]")
 
@@ -61,6 +64,10 @@ try:
     print(f"   Template range: [{np.min(template.data):.2f}, {np.max(template.data):.2f}]")
     print(f"   Mask shape: {atlas_mask.shape}")
     print(f"   Mask coverage: {np.sum(atlas_mask.data > 0) / np.prod(atlas_mask.shape) * 100:.1f}%")
+    
+    # Apply same normalization to atlas template as was applied to input image
+    from preprocessing import normalize_intensity
+    template = normalize_intensity(template, method=normalize_method)
     
     if PLT:
         ScrollerMulti(
@@ -80,7 +87,7 @@ print("   This may take a few minutes...")
 registered_img, transform = register_to_atlas(
     moving_img=preprocessed,
     fixed_img=template,
-    registration_type="affine"
+    registration_type=registration_type
 )
 print(f"   Registered shape: {registered_img.shape}")
 
@@ -144,7 +151,8 @@ print("\n9. Testing complete pipeline...")
 complete_result = atlas_based_skull_strip(
     img_data=preprocessed,
     atlas_dir=ATLAS_DIR,
-    registration_type="rigid"
+    registration_type=registration_type,
+    normalize_method = normalize_method
 )
 save_nifti(complete_result, OUTPUT_DIR / "skull_stripped_pipeline.nii")
 print("   ✓ Pipeline result saved")

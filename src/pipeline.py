@@ -14,7 +14,7 @@ from watchdog.events import FileSystemEventHandler, FileCreatedEvent
 from utils import load_nifti, save_nifti, setup_logging
 from preprocessing import preprocess_image
 from registration import atlas_based_skull_strip
-from quality_assessment import assess_quality, print_quality_report
+from quality_assessment import assess_quality, save_quality_report_json
 
 logger = logging.getLogger(__name__)
 
@@ -50,16 +50,11 @@ def process_single_file(input_file: Path, config: dict, output_dir: Path):
         
         # Quality assessment
         quality_results = assess_quality(result)
-        
-        # Save report
-        report_file = output_dir / f"{input_file.stem}_quality_report.txt"
-        with open(report_file, 'w') as f:
-            import sys
-            old_stdout = sys.stdout
-            sys.stdout = f
-            print_quality_report(quality_results)
-            sys.stdout = old_stdout
-        
+
+        # Save report as JSON
+        report_file = output_dir / f"{input_file.stem}_quality_report.json"
+        save_quality_report_json(quality_results, report_file, filename=input_file.name)
+
         logger.info(f"Saved quality report: {report_file.name}")
         
         # Create processing marker
