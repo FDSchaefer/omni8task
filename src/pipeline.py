@@ -28,17 +28,19 @@ def process_single_file(input_file: Path, config: dict, output_dir: Path):
         img = load_nifti(input_file)
         
         # Preprocess
+        normalize_method = config.get('normalize_method', 'zscore')
         preprocessed = preprocess_image(
             img,
-            normalize_method=config.get('normalize_method', 'zscore'),
+            normalize_method=normalize_method,
             sigma=config.get('gaussian_sigma', 1.0)
         )
-        
-        # Skull strip
+
+        # Skull strip (pass normalization method so atlas is normalized the same way)
         result = atlas_based_skull_strip(
             preprocessed,
             atlas_dir=Path(config['atlas_dir']),
-            registration_type=config.get('registration_type', 'rigid')
+            registration_type=config.get('registration_type', 'rigid'),
+            normalize_method=normalize_method
         )
         
         # Save result
@@ -274,7 +276,7 @@ if __name__ == "__main__":
     # Create output directory if needed
     args.output_dir.mkdir(parents=True, exist_ok=True)
     
-    if args.watch:
+    if 1:#args.watch:
         run_watch_mode(args.config, args.input_dir, args.output_dir)
     else:
         run_batch_mode(args.config, args.input_dir, args.output_dir)

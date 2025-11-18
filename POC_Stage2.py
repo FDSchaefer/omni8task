@@ -23,7 +23,7 @@ setup_logging("INFO")
 PLT = input("Show Plots? (y/n): ").lower() == 'y'
 
 # Configuration
-INPUT_FILE = "./data/sample_data/nii_sample.nii"
+INPUT_FILE = "./data/sample_data/test_sample.nii"
 ATLAS_DIR = Path("./MNI_atlas")
 OUTPUT_DIR = Path("./data/sample_data/processed")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -80,7 +80,7 @@ print("   This may take a few minutes...")
 registered_img, transform = register_to_atlas(
     moving_img=preprocessed,
     fixed_img=template,
-    registration_type="rigid"
+    registration_type="affine"
 )
 print(f"   Registered shape: {registered_img.shape}")
 

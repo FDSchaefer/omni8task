@@ -29,7 +29,7 @@ RUN mkdir -p /app/MNI_atlas && \
 RUN mkdir -p /data/input /data/output /data/config
 
 # Set entrypoint
-ENTRYPOINT ["python", "-m", "src.pipeline"]
+ENTRYPOINT ["python", "src/pipeline.py"]
 
-# Default to watch mode
-CMD ["--watch"]
+# Default to watch mode with fallback config
+CMD ["--watch", "--config", "/data/config/config.json"]

@@ -294,25 +294,32 @@ def skull_strip(img_data: ImageData, mask: ImageData) -> ImageData:
 def atlas_based_skull_strip(
     img_data: ImageData,
     atlas_dir: Path,
-    registration_type: str = "rigid"
+    registration_type: str = "rigid",
+    normalize_method: str = "zscore"
 ) -> ImageData:
     """
     Complete atlas-based skull stripping pipeline.
-    
+
     Args:
-        img_data: Input brain scan
+        img_data: Input brain scan (should be preprocessed/normalized)
         atlas_dir: Directory containing atlas files
         registration_type: Registration type ('rigid' or 'affine')
-        
+        normalize_method: Normalization method applied to input ('zscore' or 'minmax')
+
     Returns:
         Skull-stripped brain image
     """
     logger.info("Starting atlas-based skull stripping")
-    
+
     # Load atlas
     template, atlas_mask = load_atlas(atlas_dir)
     logger.info(f"Atlas template shape: {template.shape}")
     logger.info(f"Atlas mask shape: {atlas_mask.shape}")
+
+    # Apply same normalization to atlas template as was applied to input image
+    from preprocessing import normalize_intensity
+    template = normalize_intensity(template, method=normalize_method)
+    logger.info(f"Applied {normalize_method} normalization to atlas template")
     
     # Register input image to atlas
     registered_img, transform = register_to_atlas(
