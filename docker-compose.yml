@@ -4,9 +4,9 @@ services:
   skull-stripper:
     build: .
     volumes:
-      - ./data/input:/data/input
-      - ./data/output:/data/output
-      - ./docker_config.json:/data/config/config.json:ro
+      - ./data/input:/app/data/input
+      - ./data/output:/app/data/output
+      - ./docker_config.json:/app/data/config/config.json:ro
     environment:
       - PYTHONUNBUFFERED=1
     command: '--watch'
