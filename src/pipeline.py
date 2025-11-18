@@ -35,13 +35,33 @@ def process_single_file(input_file: Path, config: dict, output_dir: Path):
             sigma=config.get('gaussian_sigma', 1.0)
         )
 
-        # Skull strip (pass normalization method so atlas is normalized the same way)
-        result = atlas_based_skull_strip(
-            preprocessed,
-            atlas_dir=Path(config['atlas_dir']),
-            registration_type=config.get('registration_type', 'rigid'),
-            normalize_method=normalize_method
-        )
+        # Determine mask target
+        mask_target = config.get('mask_target', 'processed')
+        
+        if mask_target not in ['original', 'processed']:
+            logger.warning(f"Invalid mask_target '{mask_target}', using 'processed'")
+            mask_target = 'processed'
+        
+        # Skull strip with appropriate mask target
+        if mask_target == 'original':
+            logger.info("Mask will be applied to original (unprocessed) image")
+            result = atlas_based_skull_strip(
+                preprocessed,
+                atlas_dir=Path(config['atlas_dir']),
+                registration_type=config.get('registration_type', 'rigid'),
+                normalize_method=normalize_method,
+                mask_target='original',
+                original_img_data=img
+            )
+        else:
+            logger.info("Mask will be applied to preprocessed image")
+            result = atlas_based_skull_strip(
+                preprocessed,
+                atlas_dir=Path(config['atlas_dir']),
+                registration_type=config.get('registration_type', 'rigid'),
+                normalize_method=normalize_method,
+                mask_target='processed'
+            )
         
         # Save result
         output_file = output_dir / f"{input_file.stem}_skull_stripped.nii.gz"
@@ -169,6 +189,7 @@ def run_watch_mode(config_path: Path, input_dir: Path, output_dir: Path):
     logger.info(f"Input directory: {input_dir}")
     logger.info(f"Output directory: {output_dir}")
     logger.info(f"Configuration: {config_path}")
+    logger.info(f"Mask target: {config.get('mask_target', 'processed')}")
     logger.info("")
     logger.info("Watching for new files...")
     logger.info("Press Ctrl+C to stop")
@@ -215,6 +236,7 @@ def run_batch_mode(config_path: Path, input_dir: Path, output_dir: Path):
     logger.info("="*60)
     logger.info("SKULL STRIPPING PIPELINE - BATCH MODE")
     logger.info("="*60)
+    logger.info(f"Mask target: {config.get('mask_target', 'processed')}")
     
     # Process all files
     input_files = [f for f in input_dir.glob('*.nii*') if is_valid_nifti(f)]
@@ -271,7 +293,7 @@ if __name__ == "__main__":
     # Create output directory if needed
     args.output_dir.mkdir(parents=True, exist_ok=True)
     
-    if 1:#args.watch:
+    if 1:
         run_watch_mode(args.config, args.input_dir, args.output_dir)
     else:
         run_batch_mode(args.config, args.input_dir, args.output_dir)

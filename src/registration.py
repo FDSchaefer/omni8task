@@ -4,7 +4,7 @@ Image registration functions for atlas-based skull stripping.
 import logging
 import numpy as np
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Literal
 
 import SimpleITK as sitk
 
@@ -295,7 +295,9 @@ def atlas_based_skull_strip(
     img_data: ImageData,
     atlas_dir: Path,
     registration_type: str = "rigid",
-    normalize_method: str = "zscore"
+    normalize_method: str = "zscore",
+    mask_target: Literal["original", "processed"] = "processed",
+    original_img_data: ImageData = None
 ) -> ImageData:
     """
     Complete atlas-based skull stripping pipeline.
@@ -305,11 +307,18 @@ def atlas_based_skull_strip(
         atlas_dir: Directory containing atlas files
         registration_type: Registration type ('rigid' or 'affine')
         normalize_method: Normalization method applied to input ('zscore' or 'minmax')
+        mask_target: Whether to apply mask to 'original' or 'processed' image
+        original_img_data: Original unprocessed image (required if mask_target='original')
 
     Returns:
         Skull-stripped brain image
     """
     logger.info("Starting atlas-based skull stripping")
+    logger.info(f"Mask target: {mask_target}")
+    
+    # Validate inputs
+    if mask_target == "original" and original_img_data is None:
+        raise ValueError("original_img_data must be provided when mask_target='original'")
 
     # Load atlas
     template, atlas_mask = load_atlas(atlas_dir)
@@ -331,12 +340,20 @@ def atlas_based_skull_strip(
     # Apply mask in atlas space
     masked_in_atlas = skull_strip(registered_img, atlas_mask)
     
+    # Determine which image to apply the mask to
+    if mask_target == "original":
+        target_img = original_img_data
+        logger.info("Applying mask to original (unprocessed) image")
+    else:
+        target_img = img_data
+        logger.info("Applying mask to preprocessed image")
+    
     # Transform result back to original space
     inverse_transform = transform.GetInverse()
     
     # Resample back to original space
     moving_sitk = numpy_to_sitk(masked_in_atlas)
-    reference_sitk = numpy_to_sitk(img_data)
+    reference_sitk = numpy_to_sitk(target_img)
     
     resampler = sitk.ResampleImageFilter()
     resampler.SetReferenceImage(reference_sitk)
@@ -345,7 +362,7 @@ def atlas_based_skull_strip(
     resampler.SetTransform(inverse_transform)
     
     result_sitk = resampler.Execute(moving_sitk)
-    result = sitk_to_numpy(result_sitk, img_data)
+    result = sitk_to_numpy(result_sitk, target_img)
     
     logger.info("Atlas-based skull stripping complete")
     

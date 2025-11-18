@@ -152,15 +152,17 @@ complete_result = atlas_based_skull_strip(
     img_data=preprocessed,
     atlas_dir=ATLAS_DIR,
     registration_type=registration_type,
-    normalize_method = normalize_method
+    normalize_method = normalize_method,
+    mask_target='original',
+    original_img_data=img_data
 )
 save_nifti(complete_result, OUTPUT_DIR / "skull_stripped_pipeline.nii")
 print("   ✓ Pipeline result saved")
 
 if PLT:
     ScrollerMulti(
-        [preprocessed.data, complete_result.data],
-        ["Original", "Pipeline Result"]
+        [img_data.data,preprocessed.data, complete_result.data],
+        ["Original","Preprocessed", "Pipeline Result"]
     )
     input("Press Enter to continue after closing the image viewer...")
 
