@@ -10,11 +10,16 @@ Download MNI152 atlas
 Implement SimpleITK-based registration (registration.py)
 Apply transformed mask to extract brain
 
-PhStagease 3: CLI & Integration
+Stage 3: CLI & Integration
 
 Create command-line interface with argparse
 Add logging throughout pipeline
 Error handling for edge cases
+
+Stage 4: Docker Integration 
+
+Host pipline in Docker
+Create production style usecase
 
 Stage 4: Testing & Documentation
 

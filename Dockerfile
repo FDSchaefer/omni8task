@@ -15,6 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY src/ ./src/
 
+# Add src to PYTHONPATH
+ENV PYTHONPATH="${PYTHONPATH}:/app/src"
+
 # Download MNI atlas
 RUN mkdir -p /app/MNI_atlas && \
     wget -O /tmp/mni_atlas.zip \

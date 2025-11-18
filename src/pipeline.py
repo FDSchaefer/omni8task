@@ -248,19 +248,19 @@ if __name__ == "__main__":
     parser.add_argument(
         '--config', 
         type=Path, 
-        default=Path('/data/config/config.json'),
+        default=Path('./data/config/config.json'),
         help='Path to configuration file'
     )
     parser.add_argument(
         '--input-dir', 
         type=Path, 
-        default=Path('/data/input'),
+        default=Path('./data/input'),
         help='Input directory containing MRI files'
     )
     parser.add_argument(
         '--output-dir', 
         type=Path, 
-        default=Path('/data/output'),
+        default=Path('./data/output'),
         help='Output directory for results'
     )
     parser.add_argument(
