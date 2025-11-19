@@ -1,19 +1,22 @@
 #!/bin/bash
-# POC_Stage3.sh - Demonstration of pipeline.py command-line usage
-# This script shows various ways to use the skull stripping pipeline
+# POC_Stage3_CLI.sh - Demonstration of pipeline_CLI.py wrapper usage
+# This script shows the simplified command-line interface matching the task specification
 
 set -e  # Exit on error
 
 echo "================================================================"
-echo "STAGE 3: COMMAND-LINE PIPELINE DEMONSTRATION"
+echo "STAGE 3: CLI WRAPPER DEMONSTRATION"
 echo "================================================================"
+echo ""
+echo "This demonstrates the simplified CLI wrapper (pipeline_CLI.py)"
+echo "which matches the task specification interface."
 echo ""
 
 # Setup
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INPUT_DIR="./data/sample_data"
-OUTPUT_DIR="./data/output_poc3"
-CONFIG_FILE="./data/config/config.json"
+OUTPUT_DIR="./data/output_poc3_cli"
+CONFIG_FILE="./config.json"
 
 # Create output directory
 mkdir -p "$OUTPUT_DIR"
@@ -25,205 +28,163 @@ echo "  Config file:      $CONFIG_FILE"
 echo ""
 
 # -----------------------------------------------------------------------------
-# Example 1: Basic usage with defaults
+# Example 1: Single file processing with defaults
 # -----------------------------------------------------------------------------
-echo "Example 1: Basic usage with default configuration"
+echo "Example 1: Single file processing (basic usage)"
 echo "----------------------------------------------------------------"
+echo "This matches the task specification example:"
+echo ""
 echo "Command:"
-echo "  python src/pipeline.py \\"
-echo "    --config $CONFIG_FILE \\"
-echo "    --input-dir $INPUT_DIR \\"
-echo "    --output-dir $OUTPUT_DIR/example1"
+echo "  python src/pipeline_CLI.py \\"
+echo "    --input $INPUT_DIR/test_sample.nii \\"
+echo "    --output $OUTPUT_DIR/example1_output.nii.gz"
 echo ""
 
-mkdir -p "$OUTPUT_DIR/example1/input"
-cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example1/input/"
+python src/pipeline_CLI.py \
+  --input "$INPUT_DIR/test_sample.nii" \
+  --output "$OUTPUT_DIR/example1_output.nii.gz"
 
-python src/pipeline.py \
-  --config "$CONFIG_FILE" \
-  --input-dir "$OUTPUT_DIR/example1/input" \
-  --output-dir "$OUTPUT_DIR/example1"
-
+echo ""
 echo "✓ Example 1 complete"
 echo ""
 read -p "Press Enter to continue..."
 echo ""
 
 # -----------------------------------------------------------------------------
-# Example 2: Custom normalization and smoothing parameters
+# Example 2: Single file with custom sigma parameter
 # -----------------------------------------------------------------------------
-echo "Example 2: Custom preprocessing parameters"
+echo "Example 2: Single file with custom smoothing parameter"
 echo "----------------------------------------------------------------"
-echo "Using minmax normalization and sigma=2.0"
+echo "Using sigma=1.5 for Gaussian smoothing"
 echo ""
-
-# Create custom config
-cat > "$OUTPUT_DIR/config_custom.json" << EOF
-{
-  "normalize_method": "minmax",
-  "gaussian_sigma": 2.0,
-  "registration_type": "rigid",
-  "mask_target": "processed",
-  "atlas_dir": "./MNI_atlas",
-  "log_level": "INFO"
-}
-EOF
-
-mkdir -p "$OUTPUT_DIR/example2/input"
-cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example2/input/"
-
 echo "Command:"
-echo "  python src/pipeline.py \\"
-echo "    --config $OUTPUT_DIR/config_custom.json \\"
-echo "    --input-dir $OUTPUT_DIR/example2/input \\"
-echo "    --output-dir $OUTPUT_DIR/example2"
+echo "  python src/pipeline_CLI.py \\"
+echo "    --input $INPUT_DIR/test_sample.nii \\"
+echo "    --output $OUTPUT_DIR/example2_output.nii.gz \\"
+echo "    --sigma 1.5"
 echo ""
 
-python src/pipeline.py \
-  --config "$OUTPUT_DIR/config_custom.json" \
-  --input-dir "$OUTPUT_DIR/example2/input" \
-  --output-dir "$OUTPUT_DIR/example2"
+python src/pipeline_CLI.py \
+  --input "$INPUT_DIR/test_sample.nii" \
+  --output "$OUTPUT_DIR/example2_output.nii.gz" \
+  --sigma 1.5
 
+echo ""
 echo "✓ Example 2 complete"
 echo ""
 read -p "Press Enter to continue..."
 echo ""
 
 # -----------------------------------------------------------------------------
-# Example 3: Apply mask to original (unprocessed) image
+# Example 3: Single file with multiple custom parameters
 # -----------------------------------------------------------------------------
-echo "Example 3: Mask applied to original image"
+echo "Example 3: Single file with custom normalization and registration"
 echo "----------------------------------------------------------------"
-echo "Processing with mask_target='original' to preserve original intensities"
+echo "Using minmax normalization and affine registration"
 echo ""
-
-cat > "$OUTPUT_DIR/config_original_mask.json" << EOF
-{
-  "normalize_method": "zscore",
-  "gaussian_sigma": 1.0,
-  "registration_type": "rigid",
-  "mask_target": "original",
-  "atlas_dir": "./MNI_atlas",
-  "log_level": "INFO"
-}
-EOF
-
-mkdir -p "$OUTPUT_DIR/example3/input"
-cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example3/input/"
-
 echo "Command:"
-echo "  python src/pipeline.py \\"
-echo "    --config $OUTPUT_DIR/config_original_mask.json \\"
-echo "    --input-dir $OUTPUT_DIR/example3/input \\"
-echo "    --output-dir $OUTPUT_DIR/example3"
+echo "  python src/pipeline_CLI.py \\"
+echo "    --input $INPUT_DIR/test_sample.nii \\"
+echo "    --output $OUTPUT_DIR/example3_output.nii.gz \\"
+echo "    --normalize minmax \\"
+echo "    --registration affine \\"
+echo "    --sigma 2.0"
 echo ""
 
-python src/pipeline.py \
-  --config "$OUTPUT_DIR/config_original_mask.json" \
-  --input-dir "$OUTPUT_DIR/example3/input" \
-  --output-dir "$OUTPUT_DIR/example3"
+python src/pipeline_CLI.py \
+  --input "$INPUT_DIR/test_sample.nii" \
+  --output "$OUTPUT_DIR/example3_output.nii.gz" \
+  --normalize minmax \
+  --registration affine \
+  --sigma 2.0
 
+echo ""
 echo "✓ Example 3 complete"
 echo ""
 read -p "Press Enter to continue..."
 echo ""
 
 # -----------------------------------------------------------------------------
-# Example 4: Watch mode simulation (process existing + monitor for new)
+# Example 4: Apply mask to original image
 # -----------------------------------------------------------------------------
-echo "Example 4: Watch mode (run for 30 seconds)"
+echo "Example 4: Mask applied to original (unprocessed) image"
 echo "----------------------------------------------------------------"
-echo "The pipeline will process existing files and watch for new ones"
+echo "Using --mask-target original to preserve original intensities"
 echo ""
-
-mkdir -p "$OUTPUT_DIR/example4/input"
-cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example4/input/"
-
 echo "Command:"
-echo "  timeout 30 python src/pipeline.py \\"
-echo "    --config $CONFIG_FILE \\"
-echo "    --input-dir $OUTPUT_DIR/example4/input \\"
-echo "    --output-dir $OUTPUT_DIR/example4 \\"
-echo "    --watch"
+echo "  python src/pipeline_CLI.py \\"
+echo "    --input $INPUT_DIR/test_sample.nii \\"
+echo "    --output $OUTPUT_DIR/example4_output.nii.gz \\"
+echo "    --mask-target original"
 echo ""
-echo "Starting watch mode (will timeout after 10 seconds)..."
 
-# Run in watch mode with timeout
-timeout 30 python src/pipeline.py \
-  --config "$CONFIG_FILE" \
-  --input-dir "$OUTPUT_DIR/example4/input" \
-  --output-dir "$OUTPUT_DIR/example4" \
-  --watch || true
+python src/pipeline_CLI.py \
+  --input "$INPUT_DIR/test_sample.nii" \
+  --output "$OUTPUT_DIR/example4_output.nii.gz" \
+  --mask-target original
 
 echo ""
-echo "✓ Example 4 complete (watch mode timed out as expected)"
+echo "✓ Example 4 complete"
 echo ""
 read -p "Press Enter to continue..."
 echo ""
 
 # -----------------------------------------------------------------------------
-# Example 5: Batch processing multiple files
+# Example 5: Batch processing directory
 # -----------------------------------------------------------------------------
-echo "Example 5: Batch processing multiple files"
+echo "Example 5: Batch processing directory"
 echo "----------------------------------------------------------------"
-echo "Processing multiple files at once"
+echo "Processing all files in a directory"
 echo ""
 
+# Create input directory with multiple files
 mkdir -p "$OUTPUT_DIR/example5/input"
 cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example5/input/scan_001.nii"
 cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example5/input/scan_002.nii"
 
 echo "Command:"
-echo "  python src/pipeline.py \\"
-echo "    --config $CONFIG_FILE \\"
+echo "  python src/pipeline_CLI.py \\"
 echo "    --input-dir $OUTPUT_DIR/example5/input \\"
-echo "    --output-dir $OUTPUT_DIR/example5"
+echo "    --output-dir $OUTPUT_DIR/example5/output"
 echo ""
 
-python src/pipeline.py \
-  --config "$CONFIG_FILE" \
+python src/pipeline_CLI.py \
   --input-dir "$OUTPUT_DIR/example5/input" \
-  --output-dir "$OUTPUT_DIR/example5"
+  --output-dir "$OUTPUT_DIR/example5/output"
 
+echo ""
 echo "✓ Example 5 complete"
 echo ""
 read -p "Press Enter to continue..."
 echo ""
 
 # -----------------------------------------------------------------------------
-# Example 6: Affine registration (more flexible than rigid)
+# Example 6: Batch processing with custom parameters
 # -----------------------------------------------------------------------------
-echo "Example 6: Using affine registration"
+echo "Example 6: Batch processing with custom parameters"
 echo "----------------------------------------------------------------"
-echo "Affine registration allows scaling and shearing in addition to rotation/translation"
+echo "Processing directory with minmax normalization and sigma=1.5"
 echo ""
-
-cat > "$OUTPUT_DIR/config_affine.json" << EOF
-{
-  "normalize_method": "zscore",
-  "gaussian_sigma": 1.0,
-  "registration_type": "affine",
-  "mask_target": "processed",
-  "atlas_dir": "./MNI_atlas",
-  "log_level": "INFO"
-}
-EOF
 
 mkdir -p "$OUTPUT_DIR/example6/input"
-cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example6/input/"
+cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example6/input/scan_001.nii"
+cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example6/input/scan_002.nii"
 
 echo "Command:"
-echo "  python src/pipeline.py \\"
-echo "    --config $OUTPUT_DIR/config_affine.json \\"
+echo "  python src/pipeline_CLI.py \\"
 echo "    --input-dir $OUTPUT_DIR/example6/input \\"
-echo "    --output-dir $OUTPUT_DIR/example6"
+echo "    --output-dir $OUTPUT_DIR/example6/output \\"
+echo "    --normalize minmax \\"
+echo "    --sigma 1.5"
 echo ""
 
-python src/pipeline.py \
-  --config "$OUTPUT_DIR/config_affine.json" \
+python src/pipeline_CLI.py \
   --input-dir "$OUTPUT_DIR/example6/input" \
-  --output-dir "$OUTPUT_DIR/example6"
+  --output-dir "$OUTPUT_DIR/example6/output" \
+  --normalize minmax \
+  --sigma 1.5
 
+echo ""
 echo "✓ Example 6 complete"
 echo ""
 read -p "Press Enter to continue..."
@@ -236,33 +197,19 @@ echo "Example 7: Debug-level logging"
 echo "----------------------------------------------------------------"
 echo "Using DEBUG log level for detailed output"
 echo ""
-
-cat > "$OUTPUT_DIR/config_debug.json" << EOF
-{
-  "normalize_method": "zscore",
-  "gaussian_sigma": 1.0,
-  "registration_type": "rigid",
-  "mask_target": "processed",
-  "atlas_dir": "./MNI_atlas",
-  "log_level": "DEBUG"
-}
-EOF
-
-mkdir -p "$OUTPUT_DIR/example7/input"
-cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example7/input/"
-
 echo "Command:"
-echo "  python src/pipeline.py \\"
-echo "    --config $OUTPUT_DIR/config_debug.json \\"
-echo "    --input-dir $OUTPUT_DIR/example7/input \\"
-echo "    --output-dir $OUTPUT_DIR/example7"
+echo "  python src/pipeline_CLI.py \\"
+echo "    --input $INPUT_DIR/test_sample.nii \\"
+echo "    --output $OUTPUT_DIR/example9_output.nii.gz \\"
+echo "    --log-level DEBUG"
 echo ""
 
-python src/pipeline.py \
-  --config "$OUTPUT_DIR/config_debug.json" \
-  --input-dir "$OUTPUT_DIR/example7/input" \
-  --output-dir "$OUTPUT_DIR/example7"
+python src/pipeline_CLI.py \
+  --input "$INPUT_DIR/test_sample.nii" \
+  --output "$OUTPUT_DIR/example9_output.nii.gz" \
+  --log-level DEBUG
 
+echo ""
 echo "✓ Example 7 complete"
 echo ""
 
@@ -271,34 +218,17 @@ echo ""
 # -----------------------------------------------------------------------------
 echo ""
 echo "================================================================"
-echo "STAGE 3 DEMONSTRATION COMPLETE"
+echo "CLI WRAPPER DEMONSTRATION COMPLETE"
 echo "================================================================"
 echo ""
 echo "Summary of examples:"
-echo "  1. Basic usage with defaults"
-echo "  2. Custom preprocessing parameters (minmax, sigma=2.0)"
-echo "  3. Mask applied to original (unprocessed) image"
-echo "  4. Watch mode for continuous processing"
-echo "  5. Batch processing multiple files"
-echo "  6. Affine registration"
+echo "  1. Basic single file processing"
+echo "  2. Single file with custom sigma"
+echo "  3. Single file with multiple custom parameters"
+echo "  4. Mask applied to original image"
+echo "  5. Batch processing directory"
+echo "  6. Batch processing with custom parameters"
 echo "  7. Debug-level logging"
 echo ""
 echo "All outputs saved to: $OUTPUT_DIR/"
-echo ""
-echo "Quality reports (JSON) are available in each example's output directory"
-echo ""
-echo "Key command-line options demonstrated:"
-echo "  --config          Configuration file path"
-echo "  --input-dir       Directory containing input NIFTI files"
-echo "  --output-dir      Directory for output files"
-echo "  --watch           Enable watch mode (continuous processing)"
-echo ""
-echo "Configuration parameters available:"
-echo "  normalize_method  'zscore' or 'minmax'"
-echo "  gaussian_sigma    Smoothing parameter (0.5 - 2.0)"
-echo "  registration_type 'rigid' or 'affine'"
-echo "  mask_target       'processed' or 'original'"
-echo "  atlas_dir         Path to MNI atlas directory"
-echo "  log_level         'DEBUG', 'INFO', 'WARNING', or 'ERROR'"
-echo ""
 echo "================================================================"
