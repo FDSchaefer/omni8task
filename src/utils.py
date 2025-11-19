@@ -114,23 +114,146 @@ def load_dicom_series(directory: Union[str, Path]) -> ImageData:
 def save_nifti(img_data: ImageData, filepath: Union[str, Path]) -> None:
     """
     Save ImageData to a NIFTI file.
-    
+
     Args:
         img_data: ImageData object to save
         filepath: Output path for NIFTI file
     """
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
-    
+
     try:
         import nibabel as nib
         nifti_img = nib.Nifti1Image(img_data.data, img_data.affine)
         nib.save(nifti_img, str(filepath))
-        
+
         logger.info(f"Saving NIFTI file: {filepath}")
 
     except Exception as e:
         logger.error(f"Failed to save NIFTI file: {e}")
+        raise
+
+
+def save_dicom_series(
+    img_data: ImageData,
+    output_dir: Union[str, Path],
+    series_description: str = "Processed Series",
+    patient_name: str = "Anonymous",
+    patient_id: str = "000000",
+    study_description: str = "MRI Study"
+) -> None:
+    """
+    Save ImageData to a DICOM series.
+
+    Args:
+        img_data: ImageData object to save
+        output_dir: Output directory for DICOM series
+        series_description: Description for the DICOM series
+        patient_name: Patient name (default: Anonymous)
+        patient_id: Patient ID (default: 000000)
+        study_description: Study description
+    """
+    import pydicom
+    from pydicom.dataset import Dataset, FileDataset
+    from datetime import datetime
+    import SimpleITK as sitk
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        logger.info(f"Saving DICOM series to: {output_dir}")
+
+        # Convert to SimpleITK image for easier DICOM writing
+        sitk_image = sitk.GetImageFromArray(img_data.data)
+
+        # Set spacing and origin from affine if available
+        if img_data.affine is not None:
+            # Extract spacing from affine matrix (diagonal elements)
+            spacing = [
+                abs(img_data.affine[0, 0]),
+                abs(img_data.affine[1, 1]),
+                abs(img_data.affine[2, 2])
+            ]
+            sitk_image.SetSpacing(spacing)
+
+            # Extract origin from affine matrix (last column)
+            origin = [
+                img_data.affine[0, 3],
+                img_data.affine[1, 3],
+                img_data.affine[2, 3]
+            ]
+            sitk_image.SetOrigin(origin)
+
+        # Setup DICOM metadata
+        current_time = datetime.now()
+
+        # Create a writer
+        writer = sitk.ImageFileWriter()
+        writer.KeepOriginalImageUIDOn()
+
+        # Generate UIDs - CRITICAL: These must be the same for all slices in the series
+        study_instance_uid = pydicom.uid.generate_uid()  # Same for all slices in study
+        series_instance_uid = pydicom.uid.generate_uid()  # Same for all slices in series
+        frame_of_reference_uid = pydicom.uid.generate_uid()  # Same for all slices
+
+        # Generate UIDs
+        series_tag_values = [
+            ("0008|0060", "MR"),  # Modality
+            ("0008|0008", "DERIVED\\SECONDARY"),  # Image Type
+            ("0008|103e", series_description),  # Series Description
+            ("0010|0010", patient_name),  # Patient Name
+            ("0010|0020", patient_id),  # Patient ID
+            ("0008|1030", study_description),  # Study Description
+            ("0008|0020", current_time.strftime("%Y%m%d")),  # Study Date
+            ("0008|0030", current_time.strftime("%H%M%S")),  # Study Time
+            ("0008|0021", current_time.strftime("%Y%m%d")),  # Series Date
+            ("0008|0031", current_time.strftime("%H%M%S")),  # Series Time
+            ("0020|000d", study_instance_uid),  # Study Instance UID
+            ("0020|000e", series_instance_uid),  # Series Instance UID
+            ("0020|0052", frame_of_reference_uid),  # Frame of Reference UID
+        ]
+
+        # Write each slice as a separate DICOM file
+        for i in range(sitk_image.GetDepth()):
+            # Extract slice
+            slice_image = sitk_image[:, :, i]
+
+            # Convert floating-point images to appropriate integer type for DICOM
+            pixel_id = slice_image.GetPixelID()
+            if pixel_id in [sitk.sitkFloat32, sitk.sitkFloat64]:
+                # Get min/max values to determine appropriate type
+                stats = sitk.StatisticsImageFilter()
+                stats.Execute(slice_image)
+                min_val = stats.GetMinimum()
+                max_val = stats.GetMaximum()
+
+                # Rescale to 16-bit unsigned integer range
+                slice_image = sitk.Cast(sitk.RescaleIntensity(slice_image,
+                                                               outputMinimum=0.0,
+                                                               outputMaximum=65535.0),
+                                        sitk.sitkUInt16)
+
+            # Set slice-specific tags
+            sop_instance_uid = pydicom.uid.generate_uid()  # Unique for each slice
+            slice_tag_values = series_tag_values + [
+                ("0020|0013", str(i + 1)),  # Instance Number
+                ("0008|0018", sop_instance_uid),  # SOP Instance UID (unique per slice)
+            ]
+
+            # Apply tags
+            for tag, value in slice_tag_values:
+                slice_image.SetMetaData(tag, value)
+
+            # Write slice
+            output_file = output_dir / f"slice_{i:04d}.dcm"
+            writer.SetFileName(str(output_file))
+            writer.Execute(slice_image)
+
+        logger.info(f"Successfully saved {sitk_image.GetDepth()} DICOM slices")
+
+    except Exception as e:
+        logger.error(f"Failed to save DICOM series: {e}")
         raise
 
 
