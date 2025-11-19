@@ -24,5 +24,4 @@ Create production style usecase
 Stage 4: Testing & Documentation
 
 Write unit tests for key functions
-Create README with usage examples
-Test with sample data
+Create README with project description and user guide
