@@ -35,12 +35,12 @@ echo "----------------------------------------------------------------"
 echo "This matches the task specification example:"
 echo ""
 echo "Command:"
-echo "  python src/pipeline_CLI.py \\"
+echo "  python pipeline_CLI.py \\"
 echo "    --input $INPUT_DIR/test_sample.nii \\"
 echo "    --output $OUTPUT_DIR/example1_output.nii.gz"
 echo ""
 
-python src/pipeline_CLI.py \
+python pipeline_CLI.py \
   --input "$INPUT_DIR/test_sample.nii" \
   --output "$OUTPUT_DIR/example1_output.nii.gz"
 
@@ -58,13 +58,13 @@ echo "----------------------------------------------------------------"
 echo "Using sigma=1.5 for Gaussian smoothing"
 echo ""
 echo "Command:"
-echo "  python src/pipeline_CLI.py \\"
+echo "  python pipeline_CLI.py \\"
 echo "    --input $INPUT_DIR/test_sample.nii \\"
 echo "    --output $OUTPUT_DIR/example2_output.nii.gz \\"
 echo "    --sigma 1.5"
 echo ""
 
-python src/pipeline_CLI.py \
+python pipeline_CLI.py \
   --input "$INPUT_DIR/test_sample.nii" \
   --output "$OUTPUT_DIR/example2_output.nii.gz" \
   --sigma 1.5
@@ -83,7 +83,7 @@ echo "----------------------------------------------------------------"
 echo "Using minmax normalization and affine registration"
 echo ""
 echo "Command:"
-echo "  python src/pipeline_CLI.py \\"
+echo "  python pipeline_CLI.py \\"
 echo "    --input $INPUT_DIR/test_sample.nii \\"
 echo "    --output $OUTPUT_DIR/example3_output.nii.gz \\"
 echo "    --normalize minmax \\"
@@ -91,7 +91,7 @@ echo "    --registration affine \\"
 echo "    --sigma 2.0"
 echo ""
 
-python src/pipeline_CLI.py \
+python pipeline_CLI.py \
   --input "$INPUT_DIR/test_sample.nii" \
   --output "$OUTPUT_DIR/example3_output.nii.gz" \
   --normalize minmax \
@@ -112,13 +112,13 @@ echo "----------------------------------------------------------------"
 echo "Using --mask-target original to preserve original intensities"
 echo ""
 echo "Command:"
-echo "  python src/pipeline_CLI.py \\"
+echo "  python pipeline_CLI.py \\"
 echo "    --input $INPUT_DIR/test_sample.nii \\"
 echo "    --output $OUTPUT_DIR/example4_output.nii.gz \\"
 echo "    --mask-target original"
 echo ""
 
-python src/pipeline_CLI.py \
+python pipeline_CLI.py \
   --input "$INPUT_DIR/test_sample.nii" \
   --output "$OUTPUT_DIR/example4_output.nii.gz" \
   --mask-target original
@@ -143,12 +143,12 @@ cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example5/input/scan_001.nii"
 cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example5/input/scan_002.nii"
 
 echo "Command:"
-echo "  python src/pipeline_CLI.py \\"
+echo "  python pipeline_CLI.py \\"
 echo "    --input-dir $OUTPUT_DIR/example5/input \\"
 echo "    --output-dir $OUTPUT_DIR/example5/output"
 echo ""
 
-python src/pipeline_CLI.py \
+python pipeline_CLI.py \
   --input-dir "$OUTPUT_DIR/example5/input" \
   --output-dir "$OUTPUT_DIR/example5/output"
 
@@ -171,14 +171,14 @@ cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example6/input/scan_001.nii"
 cp "$INPUT_DIR/test_sample.nii" "$OUTPUT_DIR/example6/input/scan_002.nii"
 
 echo "Command:"
-echo "  python src/pipeline_CLI.py \\"
+echo "  python pipeline_CLI.py \\"
 echo "    --input-dir $OUTPUT_DIR/example6/input \\"
 echo "    --output-dir $OUTPUT_DIR/example6/output \\"
 echo "    --normalize minmax \\"
 echo "    --sigma 1.5"
 echo ""
 
-python src/pipeline_CLI.py \
+python pipeline_CLI.py \
   --input-dir "$OUTPUT_DIR/example6/input" \
   --output-dir "$OUTPUT_DIR/example6/output" \
   --normalize minmax \
@@ -198,13 +198,13 @@ echo "----------------------------------------------------------------"
 echo "Using DEBUG log level for detailed output"
 echo ""
 echo "Command:"
-echo "  python src/pipeline_CLI.py \\"
+echo "  python pipeline_CLI.py \\"
 echo "    --input $INPUT_DIR/test_sample.nii \\"
 echo "    --output $OUTPUT_DIR/example9_output.nii.gz \\"
 echo "    --log-level DEBUG"
 echo ""
 
-python src/pipeline_CLI.py \
+python pipeline_CLI.py \
   --input "$INPUT_DIR/test_sample.nii" \
   --output "$OUTPUT_DIR/example9_output.nii.gz" \
   --log-level DEBUG

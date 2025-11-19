@@ -12,6 +12,7 @@ import json
 import sys
 from pathlib import Path
 
+sys.path.insert(0, './src')
 
 def load_default_config(config_path: Path = None) -> dict:
     """Load default configuration from file."""
