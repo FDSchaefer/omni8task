@@ -21,7 +21,7 @@ Stage 4: Docker Integration
 Host pipline in Docker
 Create production style usecase
 
-Stage 4: Testing & Documentation
+Stage 5: Testing & Documentation
 
 Write unit tests for key functions
 Create README with project description and user guide
