@@ -138,6 +138,14 @@ The [docker-compose.yml](docker-compose.yml) and [docker_config.json](docker_con
 
 See [Dockerfile](Dockerfile) for build details and [docker-compose.yml](docker-compose.yml) for service configuration.
 
+### Example Images
+
+![StartingDocker](./images/StartingDocker.png)
+![Image2Input](./images/Image2Input.png)
+![ProcessedImage](./images/ProcessedImage.png)
+![OutcomeVisualisation](./images/OutcomeVisualisation.png)
+
+
 ---
 
 ## CLI Usage
