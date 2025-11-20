@@ -56,6 +56,56 @@ cd ..
 
 ---
 
+## Docker Deployment
+
+### Production Context
+
+In clinical environments, MRI processing pipelines need to run continuously and reliably across different hospital IT infrastructures. Docker solves several real-world problems:
+
+**Infrastructure independence:** Hospitals use diverse systems (Windows servers, Linux clusters, cloud VMs). Docker ensures the pipeline runs identically everywhere without dependency conflicts or manual configuration.
+
+**Continuous processing:** MRI scanners produce images throughout the day. The watch mode container monitors an input directory and automatically processes new scans as they arrive - no manual intervention needed. This matches the actual workflow where technologists save scans to a shared folder and expect automated processing.
+
+**Isolation and safety:** Medical systems require strict separation from other hospital IT. Containerization provides process isolation, preventing pipeline failures from affecting other systems and vice versa.
+
+**Easy deployment:** A single `docker compose up` command deploys the entire pipeline. IT departments can integrate this into their PACS/RIS infrastructure without installing Python, dependencies, or downloading atlases manually.
+
+### Workflow Integration
+
+A typical deployment scenario:
+1. Hospital IT mounts a shared network drive to `/data/input`
+2. MRI technologists save scans to this directory (standard PACS export)
+3. Docker container detects new files and processes automatically
+4. Results appear in `/data/output` for clinicians or downstream systems
+5. Container logs provide audit trail for quality assurance
+
+This eliminates the batch processing bottleneck - scans are processed as soon as they arrive rather than waiting for someone to manually trigger batch jobs.
+
+### Running the Container
+
+**Plug and Play:**
+```bash
+bash POC_Stage4.sh
+```
+
+This script demonstrates the default configuration running in watch mode. The container will:
+- Process any existing scans in `./data/input`
+- Continue monitoring for new files
+- Save results to `./data/output`
+- Generate quality reports for each scan
+
+**Configuration:**
+The `docker-compose.yml` and `docker_config.json` files define the default behavior. Modify these to adjust preprocessing parameters, atlas location, or enable/disable watch mode.
+
+**Image details:**
+- Base: Python 3.11-slim (minimal footprint)
+- MNI152 atlas downloaded during build (no runtime dependencies)
+- Restarts automatically if crashed (production reliability)
+
+See `Dockerfile` for build details and `docker-compose.yml` for service configuration.
+
+---
+
 ## CLI Usage
 
 Process a single MRI scan:
@@ -139,6 +189,7 @@ python src/pipeline.py \
 
 This mode is the recomended approch for production environments where scans arrive dynamically.
 The user is able to drop files they need processed, without the need for running python code (if docker hosted)
+
 ---
 
 ## Pipeline Architecture
@@ -301,55 +352,6 @@ pytest --cov=src --cov-report=html
 # Specific test file
 pytest tests/test_preprocessing.py -v
 ```
-
-## Docker Deployment
-
-### Production Context
-
-In clinical environments, MRI processing pipelines need to run continuously and reliably across different hospital IT infrastructures. Docker solves several real-world problems:
-
-**Infrastructure independence:** Hospitals use diverse systems (Windows servers, Linux clusters, cloud VMs). Docker ensures the pipeline runs identically everywhere without dependency conflicts or manual configuration.
-
-**Continuous processing:** MRI scanners produce images throughout the day. The watch mode container monitors an input directory and automatically processes new scans as they arrive - no manual intervention needed. This matches the actual workflow where technologists save scans to a shared folder and expect automated processing.
-
-**Isolation and safety:** Medical systems require strict separation from other hospital IT. Containerization provides process isolation, preventing pipeline failures from affecting other systems and vice versa.
-
-**Easy deployment:** A single `docker compose up` command deploys the entire pipeline. IT departments can integrate this into their PACS/RIS infrastructure without installing Python, dependencies, or downloading atlases manually.
-
-### Workflow Integration
-
-A typical deployment scenario:
-1. Hospital IT mounts a shared network drive to `/data/input`
-2. MRI technologists save scans to this directory (standard PACS export)
-3. Docker container detects new files and processes automatically
-4. Results appear in `/data/output` for clinicians or downstream systems
-5. Container logs provide audit trail for quality assurance
-
-This eliminates the batch processing bottleneck - scans are processed as soon as they arrive rather than waiting for someone to manually trigger batch jobs.
-
-### Running the Container
-
-**Plug and Play:**
-```bash
-bash POC_Stage4.sh
-```
-
-This script demonstrates the default configuration running in watch mode. The container will:
-- Process any existing scans in `./data/input`
-- Continue monitoring for new files
-- Save results to `./data/output`
-- Generate quality reports for each scan
-
-**Configuration:**
-The `docker-compose.yml` and `docker_config.json` files define the default behavior. Modify these to adjust preprocessing parameters, atlas location, or enable/disable watch mode.
-
-**Image details:**
-- Base: Python 3.11-slim (minimal footprint)
-- MNI152 atlas downloaded during build (no runtime dependencies)
-- Restarts automatically if crashed (production reliability)
-
-See `Dockerfile` for build details and `docker-compose.yml` for service configuration.
-
 ---
 
 ## Assumptions & Design Decisions
