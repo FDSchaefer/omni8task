@@ -21,6 +21,38 @@ This project is a production-ready Python pipeline for automated skull stripping
 
 ## Table of Contents
 
+- [Overview](#overview)
+- [Installation](#installation)
+  - [Prerequisites](#prerequisites)
+  - [Setup](#setup)
+- [Docker Deployment](#docker-deployment)
+  - [Production Context](#production-context)
+  - [Workflow Integration](#workflow-integration)
+  - [Running the Container](#running-the-container)
+- [CLI Usage](#cli-usage)
+- [Usage](#usage)
+  - [Single File Processing](#single-file-processing)
+  - [Batch Processing](#batch-processing)
+  - [Watch Mode](#watch-mode)
+- [Pipeline Architecture](#pipeline-architecture)
+- [Development Approach](#development-approach)
+  - [Stage 1: Core Pipeline](#stage-1-core-pipeline)
+  - [Stage 2: Registration](#stage-2-registration)
+  - [Stage 3: CLI & Integration](#stage-3-cli--integration)
+  - [Stage 4: Docker Integration](#stage-4-docker-integration)
+  - [Stage 5: Testing & Documentation](#stage-5-testing--documentation)
+- [Pipeline Implementation](#pipeline-implementation)
+- [Quality Assessment](#quality-assessment)
+- [Visualization](#visualization)
+- [Testing](#testing)
+- [Assumptions & Design Decisions](#assumptions--design-decisions)
+- [Potential Improvements](#potential-improvements)
+- [AI Usage Disclosure](#ai-usage-disclosure)
+- [Sample Data](#sample-data)
+- [Troubleshooting](#troubleshooting)
+- [Citation](#citation)
+- [Contact](#contact)
+- [Acknowledgments](#acknowledgments)
 
 ---
 
@@ -41,6 +73,7 @@ cd omni8task
 ```bash
 pip install -r requirements.txt
 ```
+See [requirements.txt](requirements.txt) for the full list of dependencies.
 
 3. **MNI152 atlas:**
 A stripped down version of the atlas exists within the repository (T1 Only)
@@ -87,6 +120,7 @@ This eliminates the batch processing bottleneck - scans are processed as soon as
 ```bash
 bash POC_Stage4.sh
 ```
+See [POC_Stage4.sh](POC_Stage4.sh) for the complete deployment script.
 
 This script demonstrates the default configuration running in watch mode. The container will:
 - Process any existing scans in `./data/input`
@@ -95,14 +129,14 @@ This script demonstrates the default configuration running in watch mode. The co
 - Generate quality reports for each scan
 
 **Configuration:**
-The `docker-compose.yml` and `docker_config.json` files define the default behavior. Modify these to adjust preprocessing parameters, atlas location, or enable/disable watch mode.
+The [docker-compose.yml](docker-compose.yml) and [docker_config.json](docker_config.json) files define the default behavior. Modify these to adjust preprocessing parameters, atlas location, or enable/disable watch mode.
 
 **Image details:**
 - Base: Python 3.11-slim (minimal footprint)
 - MNI152 atlas downloaded during build (no runtime dependencies)
 - Restarts automatically if crashed (production reliability)
 
-See `Dockerfile` for build details and `docker-compose.yml` for service configuration.
+See [Dockerfile](Dockerfile) for build details and [docker-compose.yml](docker-compose.yml) for service configuration.
 
 ---
 
@@ -119,7 +153,7 @@ python pipeline_CLI.py \
 - `results/brain_extracted.nii.gz` - Skull-stripped brain
 - `results/brain_extracted_quality_report.json` - Quality metrics
 
-For A comprehensive understanding of its usage please read|run POC_Stage3_CLI.py
+For a comprehensive understanding of its usage, see [pipeline_CLI.py](pipeline_CLI.py) or run [POC_Stage3_CLI.sh](POC_Stage3_CLI.sh).
 
 ---
 
@@ -133,7 +167,7 @@ python process_mri.py --input scan.nii.gz --output result.nii.gz
 ```
 
 **With custom parameters:**
-Note that any values not set will be drawn from: data/config/config.json
+Note that any values not set will be drawn from [data/config/config.json](data/config/config.json)
 
 ```bash
 python process_mri.py \
@@ -163,7 +197,7 @@ python src/pipeline.py \
   --config ./data/config/config.json
 ```
 
-**Configuration file (`config.json`):**
+**Configuration file ([config.json](data/config/config.json)):**
 ```json
 {
   "normalize_method": "zscore",
@@ -205,36 +239,46 @@ The user is able to drop files they need processed, without the need for running
 
 ---
 ## Development Approach
-I took the aproch of building in Proof of Concept Stages (POC_STAGE).
-This means that I would construct a working version of a submodule, that is able to perform the required tasks to an acceptable level. (This does not mean it can not be returned to at a later date, simpily that it can be relied apon when building the next stage.) The Stage is concidered complete/passing using a POC_StageX script, that performs functional tests on all expected tasks.(Unlike unit tests, it is expeted to have a human review the outputs, the scrollview.py function is very helpful for this purpose). One the gateway is passed, the next stage can be worked apon, with bugfixes possible on previous stages as they come up. 
+I took the approach of building in Proof of Concept Stages (POC_STAGE).
+This means that I would construct a working version of a submodule, that is able to perform the required tasks to an acceptable level. (This does not mean it can not be returned to at a later date, simply that it can be relied upon when building the next stage.) The Stage is considered complete/passing using a POC_StageX script, that performs functional tests on all expected tasks. (Unlike unit tests, it is expected to have a human review the outputs, the [scrollview.py](src/scrollview.py) function is very helpful for this purpose). Once the gateway is passed, the next stage can be worked upon, with bugfixes possible on previous stages as they come up. 
 
 ### Stage 1: Core Pipeline
 
 - **Setup** project structure
-- **Implement** data loading/validation (utils.py)
-- **Implement** normalization and smoothing (preprocessing.py)
+- **Implement** data loading/validation ([utils.py](src/utils.py))
+- **Implement** normalization and smoothing ([preprocessing.py](src/preprocessing.py))
+
+See [POC_Stage1.py](POC_Stage1.py) for validation script.
 
 ### Stage 2: Registration
 
 - **Download** MNI152 atlas
-- **Implement** SimpleITK-based registration (registration.py)
+- **Implement** SimpleITK-based registration ([registration.py](src/registration.py))
 - **Apply** transformed mask to extract brain
+
+See [POC_Stage2.py](POC_Stage2.py) for validation script.
 
 ### Stage 3: CLI & Integration
 
-- **Create** command-line interface with argparse
+- **Create** command-line interface with argparse ([pipeline_CLI.py](pipeline_CLI.py))
 - **Add** logging throughout pipeline
 - **Error** handling for edge cases
 
-### Stage 4: Docker Integration 
+See [POC_Stage3.sh](POC_Stage3.sh) and [POC_Stage3_CLI.sh](POC_Stage3_CLI.sh) for validation scripts.
 
-- **Host** pipline in Docker
+### Stage 4: Docker Integration
+
+- **Host** pipeline in Docker ([Dockerfile](Dockerfile))
 - **Enable** production style usecases
+
+See [POC_Stage4.sh](POC_Stage4.sh) for deployment script.
 
 ### Stage 5: Testing & Documentation
 
 - **Write** unit tests for key functions
 - **Create** README with project description and user guide
+
+See [POC_Stage5.sh](POC_Stage5.sh) for test execution script.
 --- 
 ## Pipeline Implementation
 
@@ -266,7 +310,7 @@ This means that I would construct a working version of a submodule, that is able
 - Optional: Apply mask to original (unprocessed) image to preserve intensities
 
 ### 5. **Quality Assessment**
-Automated metrics include:
+Automated metrics (see [quality_assessment.py](src/quality_assessment.py)) include:
 - **Mask coverage:** % of brain voxels (expected: 10-20%)
 - **Brain volume:** Calculated from voxel spacing (expected: 800-2000 cm³)
 - **Connected components:** Should be 1 continuous region
@@ -320,23 +364,19 @@ Each processed scan generates a JSON quality report:
 
 ## Visualization
 
-Interactive visualization tools for quality control:
+Interactive visualization tools for quality control (see [scrollview.py](src/scrollview.py) and [demo_scrollview.py](demo_scrollview.py)):
 
 ### 1. **Side-by-Side Comparison**
-
+![Side-by-Side](./images/Sidebyside_Example.png)
 
 ### 2. **Checkerboard Overlay**
-
+![Checkerboard Overlay](./images/Checkerboard_Example.png)
 
 ### 3. **Difference Map**
-
+![Difference Map](./images/Difference_Example.png)
 
 ### 4. **Alpha Blending**
-
-**Controls:** Left/Right arrows adjust blend ratio
-
-**Example outputs:**
-
+![Alpha Blending](./images/Alpha_Example.png)
 ---
 
 ## Testing
@@ -506,8 +546,8 @@ This pipeline was tested with:
 
 
 **DICOM FORMAT:**
-- I found that there was a signficant glut in DICOM formated open source data of good quality
-- As a result I created 'convert2dicom.py' which converted .nii files to usable DICOM folder structures
+- I found that there was a significant glut in DICOM formatted open source data of good quality
+- As a result I created [convert2dicom.py](convert2dicom.py) which converted .nii files to usable DICOM folder structures
 - This could then be used for testing the DICOM ingestion. 
 
 ---
