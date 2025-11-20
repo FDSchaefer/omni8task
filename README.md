@@ -226,18 +226,6 @@ The user is able to drop files they need processed, without the need for running
 
 ---
 
-## Pipeline Architecture
-
-**Data flow:**
-1. Load input MRI (NIFTI/DICOM) and MNI152 atlas
-2. Normalize intensities (Z-score or min-max)
-3. Apply Gaussian smoothing (σ=1.0 default)
-4. Register to atlas space using SimpleITK (rigid/affine)
-5. Apply brain mask to extract brain region (from preprocessed image or original image)
-6. Transform result back to original space
-7. Save skull-stripped output + quality report
-
----
 ## Development Approach
 I took the approach of building in Proof of Concept Stages (POC_STAGE).
 This means that I would construct a working version of a submodule, that is able to perform the required tasks to an acceptable level. (This does not mean it can not be returned to at a later date, simply that it can be relied upon when building the next stage.) The Stage is considered complete/passing using a POC_StageX script, that performs functional tests on all expected tasks. (Unlike unit tests, it is expected to have a human review the outputs, the [scrollview.py](src/scrollview.py) function is very helpful for this purpose). Once the gateway is passed, the next stage can be worked upon, with bugfixes possible on previous stages as they come up. 
@@ -281,6 +269,15 @@ See [POC_Stage4.sh](POC_Stage4.sh) for deployment script.
 See [POC_Stage5.sh](POC_Stage5.sh) for test execution script.
 --- 
 ## Pipeline Implementation
+
+**Data flow:**
+1. Load input MRI (NIFTI/DICOM) and MNI152 atlas
+2. Normalize intensities (Z-score or min-max)
+3. Apply Gaussian smoothing (σ=1.0 default)
+4. Register to atlas space using SimpleITK (rigid/affine)
+5. Apply brain mask to extract brain region (from preprocessed image or original image)
+6. Transform result back to original space
+7. Save skull-stripped output + quality report
 
 ### 1. **Data Loading & Validation**
 - **Library:** `nibabel` for NIFTI, `pydicom`/`SimpleITK` for DICOM
