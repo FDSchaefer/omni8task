@@ -135,7 +135,7 @@ def register_to_atlas(
     Args:
         moving_img: Image to be registered (subject scan)
         fixed_img: Target image (atlas template)
-        registration_type: Type of registration - 'rigid', 'affine', or 'nonrigid'
+        registration_type: Type of registration - 'rigid', 'affine'
         
     Returns:
         Tuple of (registered ImageData, transformation)

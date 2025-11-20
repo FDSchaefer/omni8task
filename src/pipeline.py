@@ -386,7 +386,7 @@ if __name__ == "__main__":
     # Create output directory if needed
     args.output_dir.mkdir(parents=True, exist_ok=True)
     
-    if 1:#args.watch:
+    if args.watch:
         run_watch_mode(args.config, args.input_dir, args.output_dir)
     else:
         run_batch_mode(args.config, args.input_dir, args.output_dir)
