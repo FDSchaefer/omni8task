@@ -141,8 +141,11 @@ See [Dockerfile](Dockerfile) for build details and [docker-compose.yml](docker-c
 ### Example Images
 
 ![StartingDocker](./images/StartingDocker.png)
+
 ![Image2Input](./images/Image2Input.png)
+
 ![ProcessedImage](./images/ProcessedImage.png)
+
 ![OutcomeVisualisation](./images/OutcomeVisualisation.png)
 
 
@@ -275,6 +278,7 @@ See [POC_Stage4.sh](POC_Stage4.sh) for deployment script.
 - **Create** README with project description and user guide
 
 See [POC_Stage5.sh](POC_Stage5.sh) for test execution script.
+
 --- 
 ## Pipeline Implementation
 
