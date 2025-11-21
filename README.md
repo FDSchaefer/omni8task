@@ -325,7 +325,7 @@ Automated metrics (see [quality_assessment.py](src/quality_assessment.py)) inclu
 - **Edge density:** Smoothness of brain boundary
 - **Intensity statistics:** Mean, std, quartiles of brain region
 - Note: These are mostly placeholder and designed to be tweeked and optimised before implementation
-
+- **Dice Coefficient (Optional)** This compares a ground truth (manualy masked) image to the pipeline output. (Only triggers if ground truth is provided)
 ---
 
 ## Quality Assessment
