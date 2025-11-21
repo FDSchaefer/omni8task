@@ -8,7 +8,13 @@ from pathlib import Path
 import sys
 sys.path.insert(0, '/mnt/project/src')
 
-from utils import ImageData, validate_image_data, load_nifti, save_nifti
+from utils import (
+    ImageData, validate_image_data, load_nifti, save_nifti,
+    load_dicom_series, save_dicom_series, setup_logging
+)
+
+# Paths for test data
+SAMPLE_DICOM_DIR = Path('/home/fds/Documents/github/omni8task/data/sample_data/test_sample')
 
 
 class TestImageData(unittest.TestCase):
@@ -139,6 +145,102 @@ class TestLoadSaveNifti(unittest.TestCase):
             save_nifti(img, nested_path)
             
             self.assertTrue(nested_path.exists())
+
+
+class TestLoadDicomSeries(unittest.TestCase):
+    """Test DICOM series loading function"""
+
+    def test_load_dicom_series_success(self):
+        """Test successful DICOM series loading from sample data"""
+        img = load_dicom_series(SAMPLE_DICOM_DIR)
+
+        self.assertIsNotNone(img)
+        self.assertEqual(len(img.shape), 3)
+        self.assertGreater(img.data.size, 0)
+
+    def test_load_dicom_returns_imagedata(self):
+        """Test that load_dicom_series returns ImageData object"""
+        img = load_dicom_series(SAMPLE_DICOM_DIR)
+
+        self.assertIsInstance(img, ImageData)
+        self.assertIsInstance(img.data, np.ndarray)
+
+    def test_load_dicom_nonexistent_directory(self):
+        """Test error when directory doesn't exist"""
+        with self.assertRaises(FileNotFoundError):
+            load_dicom_series(Path('/nonexistent/directory'))
+
+    def test_load_dicom_file_instead_of_dir(self):
+        """Test error when path is file instead of directory"""
+        with tempfile.NamedTemporaryFile() as tmp:
+            with self.assertRaises(ValueError) as ctx:
+                load_dicom_series(tmp.name)
+            self.assertIn("Expected directory", str(ctx.exception))
+
+
+class TestSaveDicomSeries(unittest.TestCase):
+    """Test DICOM series saving function"""
+
+    def test_save_dicom_series_creates_files(self):
+        """Test that save_dicom_series creates DICOM files"""
+        data = np.random.rand(10, 64, 64).astype(np.float32)
+        img = ImageData(data)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "output_dicom"
+            save_dicom_series(img, output_dir)
+
+            # Check files were created
+            dcm_files = list(output_dir.glob("*.dcm"))
+            self.assertEqual(len(dcm_files), 10)
+
+    def test_save_dicom_roundtrip(self):
+        """Test save->load roundtrip preserves data shape"""
+        data = np.random.rand(5, 32, 32).astype(np.float32)
+        img = ImageData(data)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "output_dicom"
+            save_dicom_series(img, output_dir)
+
+            # Load it back
+            loaded = load_dicom_series(output_dir)
+            self.assertEqual(loaded.shape, img.shape)
+
+    def test_save_dicom_with_custom_metadata(self):
+        """Test saving with custom patient metadata"""
+        data = np.random.rand(5, 32, 32).astype(np.float32)
+        img = ImageData(data)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            output_dir = Path(tmpdir) / "output_dicom"
+            save_dicom_series(
+                img, output_dir,
+                series_description="Test Series",
+                patient_name="Test Patient",
+                patient_id="12345"
+            )
+
+            dcm_files = list(output_dir.glob("*.dcm"))
+            self.assertGreater(len(dcm_files), 0)
+
+
+class TestSetupLogging(unittest.TestCase):
+    """Test logging setup function"""
+
+    def test_setup_logging_info(self):
+        """Test logging setup with INFO level"""
+        setup_logging("INFO")
+        # No exception means success
+
+    def test_setup_logging_debug(self):
+        """Test logging setup with DEBUG level"""
+        setup_logging("DEBUG")
+
+    def test_setup_logging_case_insensitive(self):
+        """Test logging setup is case insensitive"""
+        setup_logging("info")
+        setup_logging("Info")
 
 
 if __name__ == '__main__':
