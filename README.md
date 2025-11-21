@@ -76,7 +76,7 @@ pip install -r requirements.txt
 See [requirements.txt](requirements.txt) for the full list of dependencies.
 
 3. **MNI152 atlas:**
-A stripped down version of the atlas exists within the repository (T1 Only)
+A stripped down version of the atlas exists within the repository (T1 Brain Only) 
 If the entire atlas is required see following commands and point the config to the unzip location: 
 
 ```bash
