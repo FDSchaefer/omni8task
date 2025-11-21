@@ -93,11 +93,11 @@ cd ..
 
 ### Production Context
 
-In clinical environments, MRI processing pipelines need to run continuously and reliably across different hospital IT infrastructures. Docker solves several real-world problems:
+In clinical environments, MRI processing pipelines need to run continuously and reliably across different hospital IT infrastructures. Docker is very useful for this purpose.
 
-**Infrastructure independence:** Hospitals use diverse systems (Windows servers, Linux clusters, cloud VMs). Docker ensures the pipeline runs identically everywhere without dependency conflicts or manual configuration.
+**Infrastructure independence:** Docker ensures the pipeline runs identically everywhere without dependency conflicts or manual configuration.(Windows servers, Linux clusters, cloud VMs)
 
-**Continuous processing:** MRI scanners produce images throughout the day. The watch mode container monitors an input directory and automatically processes new scans as they arrive - no manual intervention needed. This matches the actual workflow where technologists save scans to a shared folder and expect automated processing.
+**Continuous processing:** Users produce images throughout the day. The watch mode container monitors an input directory and automatically processes new scans as they arrive - no manual intervention needed.
 
 **Isolation and safety:** Medical systems require strict separation from other hospital IT. Containerization provides process isolation, preventing pipeline failures from affecting other systems and vice versa.
 
@@ -106,8 +106,8 @@ In clinical environments, MRI processing pipelines need to run continuously and 
 ### Workflow Integration
 
 A typical deployment scenario:
-1. Hospital IT mounts a shared network drive to `/data/input`
-2. MRI technologists save scans to this directory (standard PACS export)
+1. IT mounts a shared network drive to `/data/input`
+2. Users save scans to this directory (standard PACS export)
 3. Docker container detects new files and processes automatically
 4. Results appear in `/data/output` for clinicians or downstream systems
 5. Container logs provide audit trail for quality assurance
@@ -239,7 +239,7 @@ The user is able to drop files they need processed, without the need for running
 
 ## Development Approach
 I took the approach of building in Proof of Concept Stages (POC_STAGE).
-This means that I would construct a working version of a submodule, that is able to perform the required tasks to an acceptable level. (This does not mean it can not be returned to at a later date, simply that it can be relied upon when building the next stage.) The Stage is considered complete/passing using a POC_StageX script, that performs functional tests on all expected tasks. (Unlike unit tests, it is expected to have a human review the outputs, the [scrollview.py](src/scrollview.py) function is very helpful for this purpose). Once the gateway is passed, the next stage can be worked upon, with bugfixes possible on previous stages as they come up. 
+This means that I would construct a working version of a submodule, that is able to perform the required tasks to an acceptable level. (This does not mean it can not be returned to at a later date, simply that it can be relied upon when building the next stage.) The Stage is considered complete/passing using a POC_StageX script, that performs functional tests on all expected tasks. (Unlike unit tests, it is expected to have a human review the outputs (imagine functional tests), the [scrollview.py](src/scrollview.py) function is very helpful for this purpose). Once the gateway is passed, the next stage can be worked upon, with bugfixes possible on previous stages as they come up. 
 
 ### Stage 1: Core Pipeline
 
@@ -310,7 +310,6 @@ See [POC_Stage5.sh](POC_Stage5.sh) for test execution script.
 - **Registration types:**
   - **Rigid:** 6 DOF (3 rotation + 3 translation) - faster, sufficient for most cases
   - **Affine:** 12 DOF (adds scaling + shearing) - more flexible
-- **Multi-resolution:** 3 levels [4x, 2x, 1x] for robustness
 - **Optimization:** Gradient descent with automatic scaling
 
 ### 4. **Brain Extraction**
@@ -325,6 +324,7 @@ Automated metrics (see [quality_assessment.py](src/quality_assessment.py)) inclu
 - **Connected components:** Should be 1 continuous region
 - **Edge density:** Smoothness of brain boundary
 - **Intensity statistics:** Mean, std, quartiles of brain region
+- Note: These are mostly placeholder and designed to be tweeked and optimised before implementation
 
 ---
 
@@ -365,8 +365,8 @@ Each processed scan generates a JSON quality report:
 }
 ```
 
-**Interpretation:**
-- **PASS:** Brain extraction successful, meets clinical quality standards
+**Baisc Flagging:**
+- **PASS:** Brain extraction successful, meets quality standards
 - **FAIL:** Manual review recommended, check for registration issues
 
 ---
@@ -473,7 +473,6 @@ pytest tests/test_preprocessing.py -v
    - Better handling of pathological cases (large tumors, lesions)
 
 3. **Quality metrics:**
-   - Add Dice coefficient if ground truth mask available
    - Mutual information between registered and atlas
    - Automated threshold adjustment for borderline cases
 
@@ -482,7 +481,6 @@ pytest tests/test_preprocessing.py -v
 4. **Multi-atlas registration:**
    - Use multiple templates, take consensus mask
    - More robust for anatomical variations
-   - Better for pediatric or elderly populations
 
 5. **Deep learning integration:**
    - Train U-Net or similar for direct skull stripping
@@ -504,15 +502,11 @@ pytest tests/test_preprocessing.py -v
 8. **Web interface:**
    - Upload scans via browser
    - Real-time processing status
-   - Interactive 3D visualization (VTK.js or Three.js)
 
 9. **Clinical integration:**
    - DICOM C-STORE SCP (receive from PACS)
-   - HL7 FHIR integration
-   - Reporting to RIS/EMR
 
 10. **Validation study:**
-    - Compare against manual segmentations
     - Multi-site validation
     - Publication of methodology
 
@@ -577,13 +571,7 @@ WARNING: Mask coverage <5%, possible registration failure
 ```
 - **Solution:** Check input orientation, verify atlas path
 
-**3. Out of memory:**
-```
-MemoryError: Unable to allocate array
-```
-- **Solution:** Reduce batch size or downsample images (not recommended)
-
-**4. DICOM series not recognized:**
+**3. DICOM series not recognized:**
 ```
 FileNotFoundError: No DICOM files found
 ```
@@ -607,9 +595,7 @@ If you use this pipeline in research, please cite:
 
 ## Contact
 
-For questions or issues, please open a GitHub issue or contact:
-- **Email:** f.d.schaefer@gmail.com
-- **LinkedIn:** [fdschaefer](https://linkedin.com/in/fdschaefer)
+For questions or issues, please open a GitHub issue
 
 ---
 
