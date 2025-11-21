@@ -177,77 +177,55 @@ def calculate_intensity_statistics(img_data: ImageData) -> Dict[str, float]:
     
     return stats
 
-def calculate_mutual_information(img1: ImageData, img2: ImageData, 
-                                 bins: int = 256) -> float:
+def calculate_dice_metrics(pred: ImageData, gt: ImageData) -> Dict[str, float]:
     """
-    Calculate normalized mutual information between two images.
-    Useful for assessing registration quality.
-    
-    Args:
-        img1: First image (e.g., registered subject)
-        img2: Second image (e.g., atlas template)
-        bins: Number of histogram bins
-        
-    Returns:
-        Normalized mutual information value (0-1, higher is better)
-    """
-    if img1.shape != img2.shape:
-        raise ValueError(f"Image shapes must match: {img1.shape} vs {img2.shape}")
-    
-    # Flatten arrays and remove zero values (background)
-    mask = (img1.data > 0) & (img2.data > 0)
-    data1 = img1.data[mask].flatten()
-    data2 = img2.data[mask].flatten()
-    
-    if len(data1) == 0:
-        logger.warning("No overlapping voxels for MI calculation")
-        return 0.0
-    
-    # Suppress numpy histogram warnings for empty bins
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        
-        # Calculate 2D histogram
-        hist_2d, _, _ = np.histogram2d(data1, data2, bins=bins)
-        
-        # Normalize to probability distribution
-        pxy = hist_2d / np.sum(hist_2d)
-        
-        # Marginal distributions
-        px = np.sum(pxy, axis=1)
-        py = np.sum(pxy, axis=0)
-        
-        # Calculate entropies (avoiding log(0))
-        px_nonzero = px[px > 0]
-        py_nonzero = py[py > 0]
-        pxy_nonzero = pxy[pxy > 0]
-        
-        h_x = -np.sum(px_nonzero * np.log2(px_nonzero))
-        h_y = -np.sum(py_nonzero * np.log2(py_nonzero))
-        h_xy = -np.sum(pxy_nonzero * np.log2(pxy_nonzero))
-    
-    # Mutual information
-    mi = h_x + h_y - h_xy
-    
-    # Normalized mutual information (0 to 1)
-    nmi = 2 * mi / (h_x + h_y) if (h_x + h_y) > 0 else 0
-    
-    logger.info(f"Normalized Mutual Information: {nmi:.4f}")
-    
-    return nmi
+    Calculate Dice coefficient and related metrics comparing prediction to ground truth.
 
+    Args:
+        pred: Predicted segmentation (skull-stripped image)
+        gt: Ground truth segmentation (manual skull strip)
+
+    Returns:
+        Dictionary with Dice, Jaccard, sensitivity, precision
+    """
+    pred_bin = pred.data > 0
+    gt_bin = gt.data > 0
+
+    intersection = np.sum(pred_bin & gt_bin)
+    pred_sum = np.sum(pred_bin)
+    gt_sum = np.sum(gt_bin)
+    union = np.sum(pred_bin | gt_bin)
+
+    dice = 2.0 * intersection / (pred_sum + gt_sum + 1e-8)
+    jaccard = intersection / (union + 1e-8)
+    sensitivity = intersection / (gt_sum + 1e-8)  # Recall / True Positive Rate
+    precision = intersection / (pred_sum + 1e-8)  # Positive Predictive Value
+
+    metrics = {
+        'dice': float(dice),
+        'jaccard': float(jaccard),
+        'sensitivity': float(sensitivity),
+        'precision': float(precision),
+        'intersection_voxels': int(intersection),
+        'pred_voxels': int(pred_sum),
+        'gt_voxels': int(gt_sum)
+    }
+
+    logger.info(f"Dice coefficient: {dice:.4f}")
+    logger.info(f"Jaccard index: {jaccard:.4f}")
+    logger.info(f"Sensitivity: {sensitivity:.4f}, Precision: {precision:.4f}")
+
+    return metrics
 
 
 def assess_quality(img_data: ImageData, 
-                   reference_img: Optional[ImageData] = None,
                    ground_truth_mask: Optional[ImageData] = None) -> Dict[str, any]:
     """
     Comprehensive quality assessment of skull-stripped image.
     
     Args:
         img_data: Skull-stripped image to assess
-        reference_img: Optional reference image for mutual information
-        ground_truth_mask: Optional manual/ground truth mask for Dice coefficient
+        ground_truth_mask: Optional manual/ground truth mask
         
     Returns:
         Dictionary with all quality metrics and pass/fail flags
@@ -282,12 +260,12 @@ def assess_quality(img_data: ImageData,
     results['intensity_stats'] = intensity_stats
     results['intensity_ok'] = intensity_stats['std'] > 0.01  # Has variation
     
-    # 6. Mutual information (if reference provided)
-    if reference_img is not None:
-        mi = calculate_mutual_information(img_data, reference_img)
-        results['mutual_information'] = mi
-        results['registration_ok'] = mi > 0.3  # Good registration typically > 0.5
-    
+    # 6. Dice coefficient against ground truth (if provided)
+    if ground_truth_mask is not None:
+        dice_metrics = calculate_dice_metrics(img_data, ground_truth_mask)
+        results['dice_metrics'] = dice_metrics
+        results['dice_ok'] = dice_metrics['dice'] > 0.85  # Good segmentation > 0.85
+
     # Overall pass/fail
     checks = [
         results.get('coverage_ok', False),
@@ -295,7 +273,10 @@ def assess_quality(img_data: ImageData,
         results.get('components_ok', False),
         results.get('edge_density_ok', False),
         results.get('intensity_ok', False)
+
     ]
+    if ground_truth_mask is not None:
+        checks.append(results.get('dice_ok', False))
     
     results['passed_checks'] = int(sum(checks))
     results['total_checks'] = int(len(checks))
@@ -391,13 +372,19 @@ def format_quality_report_json(results: Dict[str, any],
         }
     }
 
-    # Add optional metrics if present
-    if 'mutual_information' in results:
-        report['metrics']['registration_quality'] = {
-            "mutual_information": round(results['mutual_information'], 4),
-            "status": "PASS" if results['registration_ok'] else "FAIL",
-            "threshold": "value > 0.3 (good > 0.5)",
-            "description": "Image registration quality metric"
+    if 'dice_metrics' in results:
+        dice = results['dice_metrics']
+        report['metrics']['ground_truth_comparison'] = {
+            "dice": round(dice['dice'], 4),
+            "jaccard": round(dice['jaccard'], 4),
+            "sensitivity": round(dice['sensitivity'], 4),
+            "precision": round(dice['precision'], 4),
+            "intersection_voxels": dice['intersection_voxels'],
+            "pred_voxels": dice['pred_voxels'],
+            "gt_voxels": dice['gt_voxels'],
+            "status": "PASS" if results.get('dice_ok', False) else "FAIL",
+            "threshold": "dice > 0.85",
+            "description": "Comparison against manual segmentation ground truth"
         }
 
     return report
@@ -446,33 +433,29 @@ def print_quality_report(results: Dict[str, any],
     print("="*60)
 
     print(f"\n1. Mask Coverage: {results['mask_coverage_percent']:.2f}%")
-    print(f"   Status: {'✓ PASS' if results['coverage_ok'] else '✗ FAIL'}")
+    print(f"   Status: {'PASS' if results['coverage_ok'] else 'FAIL'}")
 
     print(f"\n2. Brain Volume: {results['brain_volume_cm3']:.2f} cm³")
-    print(f"   Status: {'✓ PASS' if results['volume_ok'] else '✗ FAIL'}")
+    print(f"   Status: {'PASS' if results['volume_ok'] else 'FAIL'}")
     print(f"   Expected: 800-2000 cm³")
 
     comp = results['connected_components']
     print(f"\n3. Connected Components: {comp['num_components']}")
     print(f"   Largest component: {comp['largest_component_fraction']*100:.1f}%")
-    print(f"   Status: {'✓ PASS' if results['components_ok'] else '✗ FAIL'}")
+    print(f"   Status: {'PASS' if results['components_ok'] else 'FAIL'}")
 
     print(f"\n4. Edge Density: {results['edge_density']:.4f}")
-    print(f"   Status: {'✓ PASS' if results['edge_density_ok'] else '✗ FAIL'}")
+    print(f"   Status: {'PASS' if results['edge_density_ok'] else 'FAIL'}")
 
     stats = results['intensity_stats']
     print(f"\n5. Intensity Statistics:")
     print(f"   Mean: {stats['mean']:.2f}, Std: {stats['std']:.2f}")
     print(f"   Range: [{stats['min']:.2f}, {stats['max']:.2f}]")
-    print(f"   Status: {'✓ PASS' if results['intensity_ok'] else '✗ FAIL'}")
-
-    if 'mutual_information' in results:
-        print(f"\n6. Registration Quality (MI): {results['mutual_information']:.4f}")
-        print(f"   Status: {'✓ PASS' if results['registration_ok'] else '✗ FAIL'}")
+    print(f"   Status: {'PASS' if results['intensity_ok'] else 'FAIL'}")
 
     if 'dice_metrics' in results:
         dice = results['dice_metrics']
-        check_num = 7 if 'mutual_information' in results else 6
+        check_num = 6
         print(f"\n{check_num}. Ground Truth Comparison:")
         print(f"   Dice Coefficient: {dice['dice']:.4f}")
         print(f"   Jaccard Index: {dice['jaccard']:.4f}")
@@ -480,11 +463,11 @@ def print_quality_report(results: Dict[str, any],
         print(f"   Precision: {dice['precision']:.4f}")
         print(f"   Intersection: {dice['intersection_voxels']} voxels")
         print(f"   Predicted: {dice['pred_voxels']} | Ground Truth: {dice['gt_voxels']}")
-        print(f"   Status: {'✓ PASS' if results['dice_ok'] else '✗ FAIL'}")
+        print(f"   Status: {'PASS' if results['dice_ok'] else 'FAIL'}")
         print(f"   (Dice > 0.85 is good, > 0.9 is excellent)")
 
     print(f"\n" + "-"*60)
-    print(f"Overall: {'✓✓ PASS ✓✓' if results['overall_pass'] else '✗✗ FAIL ✗✗'}")
+    print(f"Overall: {'PASS' if results['overall_pass'] else 'FAIL'}")
     print(f"Passed {results['passed_checks']}/{results['total_checks']} checks")
     print("="*60 + "\n")
 

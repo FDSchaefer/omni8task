@@ -16,6 +16,7 @@ from registration import (
     apply_transform_to_mask
 )
 from scrollview import Scroller, ScrollerMulti, ScrollerCheckerboard, ScrollerOverlay
+from quality_assessment import assess_quality, print_quality_report
 
 # Setup logging
 setup_logging("INFO")
@@ -24,6 +25,7 @@ PLT = input("Show Plots? (y/n): ").lower() == 'y'
 
 # Configuration
 INPUT_FILE = "./data/sample_data/test_sample.nii"
+GROUND_TRUTH_FILE = "./data/sample_data/test_sample_manual_strip.nii"
 ATLAS_DIR = Path("./MNI_atlas")
 OUTPUT_DIR = Path("./data/sample_data/processed")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -144,7 +146,7 @@ save_nifti(registered_img, OUTPUT_DIR / "registered_to_atlas.nii")
 save_nifti(skull_stripped_in_atlas, OUTPUT_DIR / "skull_stripped_in_atlas.nii")
 save_nifti(mask_in_original_space, OUTPUT_DIR / "mask_in_original_space.nii")
 save_nifti(final_result, OUTPUT_DIR / "skull_stripped_final.nii")
-print("   ✓ All results saved")
+print("   All results saved")
 
 # Alternative: Complete pipeline in one call
 print("\n9. Testing complete pipeline...")
@@ -157,7 +159,7 @@ complete_result = atlas_based_skull_strip(
     original_img_data=img_data
 )
 save_nifti(complete_result, OUTPUT_DIR / "skull_stripped_pipeline.nii")
-print("   ✓ Pipeline result saved")
+print("   Pipeline result saved")
 
 if PLT:
     ScrollerMulti(
@@ -166,3 +168,8 @@ if PLT:
     )
     input("Press Enter to continue after closing the image viewer...")
 
+# Step 10: Quality assessment against ground truth
+print("\n10. Quality assessment against manual segmentation...")
+ground_truth = load_nifti(GROUND_TRUTH_FILE)
+quality_results = assess_quality(final_result, ground_truth_mask=ground_truth)
+print_quality_report(quality_results, filename=INPUT_FILE)

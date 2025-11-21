@@ -257,6 +257,31 @@ def save_dicom_series(
         raise
 
 
+def apply_mask(image: ImageData, mask: ImageData) -> ImageData:
+    """
+    Apply a binary mask to an image (skull stripping).
+
+    Args:
+        image: ImageData object containing the image to mask
+        mask: ImageData object containing the binary mask
+
+    Returns:
+        ImageData object with mask applied
+    """
+    # Squeeze extra dimensions from mask if present
+    mask_data = np.squeeze(mask.data)
+
+    if image.shape != mask_data.shape:
+        raise ValueError(f"Image shape {image.shape} does not match mask shape {mask_data.shape}")
+
+    # Binarize mask if not already binary
+    binary_mask = (mask_data > 0).astype(image.dtype)
+    masked_data = image.data * binary_mask
+
+    logger.info(f"Applied mask to image: {image.shape}")
+    return ImageData(masked_data, image.affine, image.header)
+
+
 def setup_logging(level: str = "INFO") -> None:
     """
     Configure logging for the application.
