@@ -174,7 +174,7 @@ For a comprehensive understanding of its usage, see [pipeline_CLI.py](pipeline_C
 
 **Basic usage:**
 ```bash
-python process_mri.py --input scan.nii.gz --output result.nii.gz
+python pipeline.py --input scan.nii.gz --output result.nii.gz
 ```
 
 **With custom parameters:**
